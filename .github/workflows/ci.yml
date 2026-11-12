@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e "server[ai,dev]"
+      - run: pytest -q
+        working-directory: server
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: ./gradlew assembleDebug --console=plain
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wecomdroid-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t wecomdroid .
+      - name: Smoke test
+        run: |
+          TOKEN=abcdefghijklmnopqrstuvwxyz123456
+          docker run -d --name wd -p 8788:8788 -e WECOMDROID_TOKEN=$TOKEN \
+            -e WECOMDROID_BOT_NAME=bot -e WECOMDROID_CHATS=test wecomdroid
+          for i in $(seq 1 20); do curl -sf -H "Authorization: Bearer $TOKEN" localhost:8788/commands && break; sleep 1; done
+          curl -sf -H "Authorization: Bearer $TOKEN" localhost:8788/commands | grep -q '"commands"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/commands)" = 404
+          docker logs wd

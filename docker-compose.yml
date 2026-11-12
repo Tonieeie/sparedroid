@@ -1,0 +1,34 @@
+# One command: `docker compose up -d`
+#
+# Caddy gets a real HTTPS certificate for your domain automatically
+# (point the domain's DNS at this machine first, and open ports 80 + 443).
+# No domain? Delete the caddy service and expose 8788 instead - fine on a LAN,
+# never on the public internet without TLS.
+
+services:
+  wecomdroid:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+      # Your own handler: put my_handler.py next to this file and set
+      # WECOMDROID_HANDLER=my_handler:handle
+      - ./my_handler.py:/app/my_handler.py:ro
+    expose:
+      - "8788"
+
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${WECOMDROID_DOMAIN:?set WECOMDROID_DOMAIN in .env}
+    command: caddy reverse-proxy --from ${WECOMDROID_DOMAIN} --to wecomdroid:8788
+    volumes:
+      - caddy-data:/data
+
+volumes:
+  caddy-data:

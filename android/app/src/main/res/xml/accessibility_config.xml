@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 不在这里限定包名：分享文件时系统可能先弹出别的 App 的界面（如"选择打开方式"），
+     限定成只看企业微信就看不见、也没法报告卡在哪。代码里只处理企业微信的事件和界面。
+     flagReportViewIds 让侦察导出里带上控件 ID，
+     flagIncludeNotImportantViews 防止消息气泡被系统当成"不重要"而省略。 -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"
+    android:notificationTimeout="300"
+    android:description="@string/a11y_desc" />

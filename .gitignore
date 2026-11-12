@@ -1,0 +1,30 @@
+# secrets and runtime data
+.env
+data/
+*.db
+*.sqlite
+*.db-wal
+*.db-shm
+
+# android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+*.keystore
+*.jks
+
+# python
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# editors
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
