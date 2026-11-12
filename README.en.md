@@ -12,9 +12,24 @@ it reads the message, asks your code what to say, and sends the reply.
 
 </div>
 
-![Architecture](docs/architecture.svg)
+![WeComDroid](docs/media/hero.png)
 
 ## What it does
+
+**AI customer service**: answers from your knowledge file, hands off to a human when unsure
+
+![AI demo](docs/media/demo-ai.gif)
+
+**Order intake**: order in the group → validated → saved; quote-reply the result when done, send files back
+
+![Order demo](docs/media/demo-order.gif)
+
+<sub>Illustrative animations (simplified UI, not WeCom screenshots). Real screen recordings coming.</sub>
+
+![Architecture](docs/architecture.svg)
+
+<details>
+<summary>As text</summary>
 
 ```text
 Customer  @bot what are your opening hours?
@@ -27,6 +42,8 @@ Bot       [quoting ↑] @Customer Got Zhang San's order 🎉        ← row adde
 Bot       [quoting ↑] @Customer Done: https://…/invoice         ← your system finished; reply lands on the original
 Bot       [📄 quote_zhangsan.pdf]                                ← files too, even days later
 ```
+
+</details>
 
 | | |
 |---|---|
