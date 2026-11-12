@@ -28,3 +28,7 @@ venv/
 *.iml
 .DS_Store
 Thumbs.db
+
+# python build output
+build/
+dist/
