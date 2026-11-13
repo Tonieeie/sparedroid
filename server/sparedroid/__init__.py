@@ -3,4 +3,4 @@
 from .api import Actions, Message, Notification, Reply, Screen
 
 __all__ = ["Actions", "Message", "Notification", "Reply", "Screen"]
-__version__ = "0.2.0"
+__version__ = "0.3.0"

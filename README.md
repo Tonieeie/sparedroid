@@ -10,7 +10,7 @@ SpareDroid 让一台闲置安卓手机替你盯着这些应用：**听它的通�
 
 第一个、也是打磨得最完整的用例：**企业微信外部群里的 AI 客服 / 接单机器人**。
 
-[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
+[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [接入 AI 助手（MCP）](docs/mcp.md) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
 
 ![CI](https://github.com/Tonieeie/sparedroid/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -100,6 +100,7 @@ App 不申请定位、通讯录、短信、相机、麦克风、存储权限。
 | 企业微信：识别 @、读消息、回复、引用回复、发文件 | ✅ 真机验证（2026-11，一台安卓机） |
 | 任意应用的通知转发 | ⚠️ 代码与测试完成，真机上只验证过企业微信的通知 |
 | 任意应用的 `bot.run` 通用动作（打开 / 读屏 / 点击 / 输入 / 滚动） | ⚠️ 0.2.0 新增，通过编译和单元测试，**尚未真机验证** |
+| MCP 服务（`sparedroid mcp`） | ✅ 端到端测试（真实 MCP 客户端 + 模拟手机）；依赖的通用动作同上，未真机验证 |
 | 其它聊天应用的发消息 / 引用 | ⚠️ 需要设置按钮文字（`SPAREDROID_SEND_LABEL` 等），未验证 |
 
 欢迎用 [兼容性反馈](https://github.com/Tonieeie/sparedroid/issues/new/choose) 告诉我们你的机型和应用。
@@ -196,6 +197,23 @@ def on_screen(screen, bot):
 
 命令行也能直接用：`sparedroid messages`、`sparedroid reply <id> "…" --quote`、`sparedroid send-file <会话> <文件>`。
 
+## 让 AI 助手直接用这台手机（MCP）
+
+不想写代码？SpareDroid 自带 MCP 服务，Claude Code、Claude Desktop、Cursor 接上就能「看屏幕、点按钮、读群消息、回复」：
+
+```bash
+pip install "sparedroid[mcp]"
+claude mcp add sparedroid -e SPAREDROID_HOME=/path/to/sparedroid -- sparedroid mcp
+```
+
+```text
+你：    看一下小店管家里今天的订单数
+Claude：（read_screen）今日订单 13 单，营业额 ¥3,668，待发货 4 单。
+```
+
+应用白名单、会话白名单、频率限制照样生效；`SPAREDROID_MCP_READONLY=true` 可以让 AI 只看不动。
+工具列表、远程用法和安全说明见 [docs/mcp.md](docs/mcp.md)。
+
 ## 安全边界
 
 - **应用白名单**：手机只听、只读、只点 `SPAREDROID_APPS` 里列出的应用。没列出的（银行、支付、私人聊天）它看不到也不会碰。别把你不愿意把屏幕内容交给服务器的应用列进去。
@@ -221,7 +239,7 @@ App 带**侦察模式**，能把任意受控应用的界面结构导出来，适
 
 - [ ] 真机录屏演示；更多机型和应用的兼容性验证
 - [ ] 界面定位规则改成服务器下发，适配新版本不用重编译 App
-- [ ] MCP 服务：让 Claude / Cursor 等 AI 工具直接「看手机屏幕、操作应用」
+- [x] MCP 服务：让 Claude / Cursor 等 AI 工具直接「看手机屏幕、操作应用」（[docs/mcp.md](docs/mcp.md)）
 - [ ] Claude Code skill：一步步带你把手机和服务器配好
 - [ ] 回复前自动点亮屏幕
 
@@ -287,7 +305,7 @@ SPAREDROID_HANDLER=examples.keyword_faq:handle
 | 物流 / 外卖 / 工单应用的状态变化 → 推到团队群 | `on_notification` |
 | 只有 App 没有网页后台的系统，定时抄数据进表格 | `on_tick` + `bot.run` + `on_screen` |
 | 群里 @ 机器人「查一下 XX」→ 手机去另一个应用里查 → 回到群里答复 | `handle` + `bot.run` + `bot.reply` |
-| 给你的 AI Agent 一部手机：让它看屏幕、点按钮 | `bot.run`（MCP 接入在路线图上） |
+| 给你的 AI Agent 一部手机：让它看屏幕、点按钮 | `sparedroid mcp`（见 [docs/mcp.md](docs/mcp.md)） |
 | 监控某个应用里的排队号、库存、价格 | `examples/screen_watch.py` 改一行正则 |
 
 ## License

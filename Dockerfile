@@ -4,7 +4,7 @@ WORKDIR /app
 COPY server/ /app/server/
 COPY examples/ /app/examples/
 COPY README.md /app/README.md
-RUN pip install --no-cache-dir "/app/server[ai]"
+RUN pip install --no-cache-dir "/app/server[ai,mcp]"
 
 # The handler module path (examples.xxx or your own file) is resolved from here.
 ENV SPAREDROID_HOST=0.0.0.0 \

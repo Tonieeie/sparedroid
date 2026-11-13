@@ -124,6 +124,18 @@ on a schedule, alert on change). Set `SPAREDROID_APPS` to the package names the 
 everything else is invisible to it. The generic steps are new and not yet verified on a real device;
 the WeCom chat flow is. The Chinese README has the full requirements and setup tables.
 
+## MCP: let an AI assistant use the phone
+
+```bash
+pip install "sparedroid[mcp]"
+claude mcp add sparedroid -e SPAREDROID_HOME=/path/to/sparedroid -- sparedroid mcp
+```
+
+Tools: `phone_status`, `read_screen`, `recent_notifications`, `recent_mentions`, `tap`, `type_text`, `scroll`,
+`press_back`, `go_home`, `reply_to_message`, `send_message`, `send_file`. The app and chat allow-lists and
+rate limits still apply; `SPAREDROID_MCP_READONLY=true` makes it look-only. Works over SSH or
+`docker compose exec -T` because it is plain stdio. See [docs/mcp.md](docs/mcp.md) (Chinese).
+
 ## Risks
 
 This is unofficial automation; WeCom may restrict the account. Use a dedicated account, keep the default

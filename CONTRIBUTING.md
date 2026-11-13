@@ -4,7 +4,7 @@ Issues and PRs are welcome, especially compatibility reports for different phone
 (see [docs/adapting.md](docs/adapting.md) for what to attach).
 
 ```bash
-pip install -e "server[ai,dev]" && (cd server && pytest -q)    # server
+pip install -e "server[ai,mcp,dev]" && (cd server && pytest -q)    # server
 cd android && ./gradlew assembleDebug                           # app (JDK 17, Android SDK 34)
 ```
 

@@ -7,6 +7,7 @@
     sparedroid reply <msg-id> <text> [--quote]   reply to one of them, now
     sparedroid send <chat> <text>            send text to a chat that recently messaged the bot
     sparedroid send-file <chat> <file> [--caption TEXT]
+    sparedroid mcp                           MCP server (stdio) so an AI assistant can use the phone
 
 The last three only queue a command in the database; the running server hands it to the phone.
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import threading
 import time
@@ -71,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="sparedroid", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("serve", "config", "status", "messages"):
+    for name in ("serve", "config", "status", "messages", "mcp"):
         sub.add_parser(name)
     p = sub.add_parser("reply")
     p.add_argument("message_id")
@@ -87,9 +89,20 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # MCP clients start us from an arbitrary directory: SPAREDROID_HOME says where .env and data/ live.
+    if os.environ.get("SPAREDROID_HOME"):
+        os.chdir(os.environ["SPAREDROID_HOME"])
     cfg = Config.from_env()
     if a.cmd == "serve":
         serve(cfg)
+        return 0
+    if a.cmd == "mcp":
+        try:
+            from .mcp import main as mcp_main
+            import mcp.server.mcpserver  # noqa: F401
+        except ImportError:
+            sys.exit('The MCP server needs an extra dependency:  pip install "sparedroid[mcp]"')
+        mcp_main()
         return 0
     if a.cmd == "config":
         endpoint = cfg.public_url or f"http://<this-machine-ip>:{cfg.port}"

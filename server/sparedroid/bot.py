@@ -122,6 +122,8 @@ class Bot:
     def _on_notification(self, p: dict) -> None:
         chat = p.get("chat") or ""
         app = p.get("package") or "com.tencent.wework"
+        self.store.add_notification(app=app, chat=chat, title=p.get("title") or "",
+                                    text=p.get("big_text") or p.get("text") or "", mentioned=bool(p.get("mentioned")))
         self._hook("on_notification", Notification(
             app=app, title=p.get("title") or "", text=p.get("big_text") or p.get("text") or "",
             chat=chat, mentioned=bool(p.get("mentioned")), posted_at=(p.get("post_time") or 0) / 1000, raw=p))
@@ -141,6 +143,9 @@ class Bot:
     def _on_result(self, p: dict) -> None:
         ok = bool(p.get("ok"))
         brief = {k: v for k, v in p.items() if k not in ("screen", "screen_on_error", "dump")}
+        # Keep what was read (bounded) so `sparedroid mcp` and the CLI can return it to a caller.
+        nodes = (p.get("screen") or p.get("screen_on_error") or {}).get("nodes") or []
+        brief["texts"] = [n["text"][:400] for n in nodes if n.get("text")][:250]
         cmd = self.store.finish(str(p.get("command_id")), ok, brief)
         if cmd is None:
             return

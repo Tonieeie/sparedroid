@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparedroid"
-version = "0.2.0"
+version = "0.3.0"
 description = "Turn a spare Android phone into an API for apps that have none: listen to notifications, read screens, act. First use case: WeCom (企业微信) external-group bots."
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,6 +13,7 @@ dependencies = []  # the core is standard library only
 
 [project.optional-dependencies]
 ai = ["anthropic>=0.40"]
+mcp = ["mcp>=2.0"]
 dev = ["pytest>=8"]
 
 [project.scripts]

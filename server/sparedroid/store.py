@@ -37,6 +37,17 @@ CREATE TABLE IF NOT EXISTS commands (
 );
 CREATE INDEX IF NOT EXISTS ix_commands_state ON commands (state, created_at);
 
+-- Recent notifications from allow-listed apps (newest 500), so tools can ask "what came in?".
+CREATE TABLE IF NOT EXISTS notifications (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    at        REAL NOT NULL,
+    app       TEXT NOT NULL,
+    chat      TEXT NOT NULL,
+    title     TEXT NOT NULL,
+    text      TEXT NOT NULL,
+    mentioned INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS seen_events (event_id TEXT PRIMARY KEY, at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
@@ -81,6 +92,20 @@ class Store:
         return [dict(r) for r in self.conn.execute(
             "SELECT * FROM messages ORDER BY at DESC LIMIT ?", (limit,))]
 
+    # -- notifications -------------------------------------------------------
+
+    def add_notification(self, *, app: str, chat: str, title: str, text: str, mentioned: bool) -> None:
+        self.conn.execute("INSERT INTO notifications (at, app, chat, title, text, mentioned) VALUES (?, ?, ?, ?, ?, ?)",
+                          (time.time(), app, chat, title, text[:2000], int(mentioned)))
+        self.conn.execute("DELETE FROM notifications WHERE id <= (SELECT max(id) FROM notifications) - 500")
+
+    def recent_notifications(self, limit: int = 20, app: str = "") -> list[dict]:
+        if app:
+            rows = self.conn.execute("SELECT * FROM notifications WHERE app = ? ORDER BY id DESC LIMIT ?", (app, limit))
+        else:
+            rows = self.conn.execute("SELECT * FROM notifications ORDER BY id DESC LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
+
     # -- commands ------------------------------------------------------------
 
     def enqueue(self, ctype: str, args: dict, *, ttl_s: int, context: dict | None = None,
@@ -123,7 +148,7 @@ class Store:
         if cmd is not None:
             self.conn.execute("UPDATE commands SET state = ?, result = ? WHERE id = ?",
                               ("done" if ok else "failed",
-                               json.dumps(result, ensure_ascii=False)[:20000], command_id))
+                               json.dumps(result, ensure_ascii=False), command_id))
         return cmd
 
     def sweep(self, *, lost_after_s: int = 180) -> list[dict]:
