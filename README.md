@@ -10,7 +10,7 @@ SpareDroid 让一台闲置安卓手机替你盯着这些应用：**听它的通�
 
 第一个、也是打磨得最完整的用例：**企业微信外部群里的 AI 客服 / 接单机器人**。
 
-[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [接入 AI 助手（MCP）](docs/mcp.md) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
+[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [接入 AI 助手（MCP）](docs/mcp.md) · [Claude Code Skill](#让-claude-code-带你配置skill) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
 
 ![CI](https://github.com/Tonieeie/sparedroid/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -214,6 +214,26 @@ Claude：（read_screen）今日订单 13 单，营业额 ¥3,668，待发货 4 
 应用白名单、会话白名单、频率限制照样生效；`SPAREDROID_MCP_READONLY=true` 可以让 AI 只看不动。
 工具列表、远程用法和安全说明见 [docs/mcp.md](docs/mcp.md)。
 
+## 让 Claude Code 带你配置（Skill）
+
+仓库自带一个 Claude Code Skill（`skills/sparedroid`）。装上之后，你直接跟 Claude 说
+「帮我把旧手机配成企业微信群机器人」或「群里 @ 机器人没反应」，它会按步骤带你部署、写逻辑、排查问题。
+
+```bash
+# macOS / Linux
+cp -r skills/sparedroid ~/.claude/skills/
+# Windows PowerShell
+Copy-Item -Recurse skills\sparedroid $HOME\.claude\skills\
+```
+
+只想在某个项目里用：复制到那个项目的 `.claude/skills/` 下即可。
+
+| 形态 | 适合谁 |
+|---|---|
+| **项目本身** | 自己部署、自己写 Python 逻辑 |
+| **MCP 服务** | 让 AI 助手直接操作手机，不写代码 |
+| **Skill** | 让 Claude Code 带你完成部署、写 handler、排查故障 |
+
 ## 安全边界
 
 - **应用白名单**：手机只听、只读、只点 `SPAREDROID_APPS` 里列出的应用。没列出的（银行、支付、私人聊天）它看不到也不会碰。别把你不愿意把屏幕内容交给服务器的应用列进去。
@@ -240,7 +260,7 @@ App 带**侦察模式**，能把任意受控应用的界面结构导出来，适
 - [ ] 真机录屏演示；更多机型和应用的兼容性验证
 - [ ] 界面定位规则改成服务器下发，适配新版本不用重编译 App
 - [x] MCP 服务：让 Claude / Cursor 等 AI 工具直接「看手机屏幕、操作应用」（[docs/mcp.md](docs/mcp.md)）
-- [ ] Claude Code skill：一步步带你把手机和服务器配好
+- [x] Claude Code skill：一步步带你把手机和服务器配好（`skills/sparedroid`）
 - [x] 操作前自动点亮屏幕（0.2.1，企业微信回复已真机验证）
 
 欢迎 issue 和 PR。范围之外的功能（群发、批量加人等）见 [CONTRIBUTING.md](CONTRIBUTING.md)。

@@ -136,6 +136,12 @@ Tools: `phone_status`, `read_screen`, `recent_notifications`, `recent_mentions`,
 rate limits still apply; `SPAREDROID_MCP_READONLY=true` makes it look-only. Works over SSH or
 `docker compose exec -T` because it is plain stdio. See [docs/mcp.md](docs/mcp.md) (Chinese).
 
+## Claude Code skill
+
+`skills/sparedroid` teaches Claude Code to set SpareDroid up with you, write handlers and troubleshoot
+("my phone bot doesn't answer in the group"). Install: `cp -r skills/sparedroid ~/.claude/skills/`
+(or into a project's `.claude/skills/`).
+
 ## Risks
 
 This is unofficial automation; WeCom may restrict the account. Use a dedicated account, keep the default
