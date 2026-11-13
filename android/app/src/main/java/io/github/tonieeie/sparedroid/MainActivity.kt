@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -44,6 +46,13 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         cfg = Config(this)
         Uploader.start(this)
+        // Android 13 起要允许通知，常驻的「运行中」通知才显示出来（不给也照样在后台跑）
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
+        KeepAliveService.ensureRunning(this)
 
         val pad = (16 * resources.displayMetrics.density).toInt()
         val col = LinearLayout(this).apply {
@@ -202,6 +211,7 @@ class MainActivity : Activity() {
             ${ok(listenerGranted())} 通知使用权（连接中：${ok(Status.listenerConnected)}）
             ${ok(Status.accessibilityConnected)} 无障碍服务
             ${ok(pm.isIgnoringBatteryOptimizations(packageName))} 不受省电限制
+            ${ok(KeepAliveService.running)} 常驻后台（通知栏「运行中」）
 
             最近企业微信通知：${t(Status.lastNotificationAt)}
             最近企业微信界面事件：${t(Status.lastWeComEventAt)}

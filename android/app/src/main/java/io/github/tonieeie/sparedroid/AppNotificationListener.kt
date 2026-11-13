@@ -23,6 +23,7 @@ class AppNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         Status.listenerConnected = true
         Uploader.start(this)
+        KeepAliveService.ensureRunning(this)
     }
 
     override fun onListenerDisconnected() {

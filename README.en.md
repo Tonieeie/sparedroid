@@ -145,7 +145,7 @@ rate limits still apply; `SPAREDROID_MCP_READONLY=true` makes it look-only. Work
 ## Risks
 
 This is unofficial automation; WeCom may restrict the account. Use a dedicated account, keep the default
-rate limits, start with one or two groups. The phone must stay plugged in with the lock screen set to None; it wakes the screen itself before acting. See [docs/faq.md](docs/faq.md).
+rate limits, start with one or two groups. The phone must stay plugged in with the lock screen set to None; it wakes the screen itself before acting, and a persistent "SpareDroid running" notification keeps it from being stopped while the screen is off. See [docs/faq.md](docs/faq.md).
 
 ## License
 

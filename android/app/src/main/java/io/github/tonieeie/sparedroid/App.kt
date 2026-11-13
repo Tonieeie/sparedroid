@@ -7,5 +7,6 @@ class App : Application() {
         super.onCreate()
         Http.certPin = Config(this).certPin
         Uploader.start(this)
+        KeepAliveService.ensureRunning(this)
     }
 }

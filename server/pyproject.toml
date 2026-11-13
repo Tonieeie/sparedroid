@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sparedroid"
-version = "0.4.0"
+version = "0.4.1"
 description = "Turn a spare Android phone into an API for apps that have none: listen to notifications, read screens, act. First use case: WeCom (企业微信) external-group bots."
 readme = "README.md"
 license = { text = "MIT" }

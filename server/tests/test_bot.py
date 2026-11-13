@@ -180,6 +180,18 @@ def test_phone_silence_and_service_health(make_bot):
     assert len(alerts) == 3 and "notification listener" in alerts[2]
 
 
+def test_keep_alive_drop_alerts_and_old_apps_are_not_flagged(make_bot):
+    bot, alerts = make_bot()
+    ok = {"accessibility_connected": True, "listener_connected": True}
+    bot.heartbeat(ok)  # older phone apps don't report keep_alive
+    bot.heartbeat(dict(ok, keep_alive=True))
+    assert alerts == []
+    bot.heartbeat(dict(ok, keep_alive=False))
+    assert len(alerts) == 1 and "keep-alive" in alerts[0]
+    bot.heartbeat(dict(ok, keep_alive=True))
+    assert len(alerts) == 2 and "healthy again" in alerts[1]
+
+
 def test_send_file_is_served_only_after_fetch_and_unchanged(make_bot, tmp_path):
     bot, _ = make_bot()
     src = tmp_path / "quote.pdf"

@@ -28,6 +28,7 @@ object Status {
     fun toJson(queueSize: Int): JSONObject = JSONObject().apply {
         put("accessibility_connected", accessibilityConnected)
         put("listener_connected", listenerConnected)
+        put("keep_alive", KeepAliveService.running)
         put("last_notification_at", lastNotificationAt)
         put("last_wecom_event_at", lastWeComEventAt)
         put("last_upload_ok_at", lastUploadOkAt)
@@ -41,5 +42,5 @@ object Status {
 
 /** 不开 buildConfig 生成，版本号手写一份，跟 app/build.gradle.kts 保持一致。 */
 object BuildConfigCompat {
-    const val VERSION_NAME = "0.3.0"
+    const val VERSION_NAME = "0.3.1"
 }

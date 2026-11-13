@@ -6,7 +6,7 @@ return 404. Paths are relative to the endpoint configured on the phone (e.g. `ht
 | Direction | Endpoint | Body |
 |---|---|---|
 | phone → | `POST /events` | `{"events": [{event_id, type, device_id, created_at, payload}]}` |
-| phone → | `POST /heartbeat` | every 60 s: `accessibility_connected`, `listener_connected`, `screen_on`, `keyguard_locked`, `queue_size`, `last_error`, `app_version`, … |
+| phone → | `POST /heartbeat` | every 60 s: `accessibility_connected`, `listener_connected`, `keep_alive` (the foreground service is running), `screen_on`, `keyguard_locked`, `queue_size`, `last_error`, `app_version`, … |
 | ← server | `GET /commands?device_id=` | `{"commands": [{id, type, args}]}` |
 | ← server | `GET /files/<id>` | bytes for a `share_file` command |
 

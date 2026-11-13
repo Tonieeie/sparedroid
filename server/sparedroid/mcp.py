@@ -116,6 +116,7 @@ class Phone:
             "last_heartbeat_seconds_ago": age,
             "can_read_and_act": bool(hb.get("accessibility_connected")),
             "can_hear_notifications": bool(hb.get("listener_connected")),
+            "keep_alive": hb.get("keep_alive"),
             "phone_app_version": hb.get("app_version"),
             "allowed_apps": list(self.cfg.apps),
             "allowed_chats": sorted(self.cfg.chats),

@@ -48,6 +48,8 @@ class BotAccessibilityService : AccessibilityService() {
         instance = this
         Status.accessibilityConnected = true
         Uploader.start(this)
+        // 进程被系统杀掉后，无障碍服务会被重新绑定 —— 常驻服务从这里跟着起来
+        KeepAliveService.ensureRunning(this)
     }
 
     override fun onDestroy() {

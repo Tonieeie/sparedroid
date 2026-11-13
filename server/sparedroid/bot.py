@@ -206,6 +206,9 @@ class Bot:
             broken = [label for key, label in (("accessibility_connected", "accessibility service"),
                                                ("listener_connected", "notification listener"))
                       if not hb.get(key)]
+            # Phone app 0.3.1+ reports its keep-alive foreground service; older apps don't send the field.
+            if "keep_alive" in hb and not hb["keep_alive"]:
+                broken.append("keep-alive service (the system may stop the app while the screen is off)")
             now = ", ".join(broken)
             if now != (self.store.get_meta("phone_health") or ""):
                 self.store.set_meta("phone_health", now)

@@ -6,6 +6,11 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 屏幕黑了也要能操作：动界面前点亮屏幕 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 常驻前台服务：熄屏后不被系统当成闲置后台停掉（KeepAliveService） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Android 13 起，常驻通知要这个权限才显示（不给也能跑，只是看不到那条通知） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- 能看到并拉起"有桌面图标的应用"（launch 指令用）；不需要 QUERY_ALL_PACKAGES。 -->
     <queries>
@@ -34,6 +39,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps a self-hosted automation bot connected to its server while the screen is off" />
+        </service>
 
         <service
             android:name=".BotAccessibilityService"
