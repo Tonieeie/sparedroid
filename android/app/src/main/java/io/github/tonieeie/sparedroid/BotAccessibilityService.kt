@@ -171,6 +171,43 @@ class BotAccessibilityService : AccessibilityService() {
         performGlobalAction(GLOBAL_ACTION_HOME)
     }
 
+    private var screenLock: android.os.PowerManager.WakeLock? = null
+
+    /**
+     * 动界面之前把屏幕点亮，并在指令执行期间一直亮着。
+     *
+     * 真机上踩过：屏幕黑着的时候，无障碍服务**读得到**界面（控件树还在），
+     * 但往输入框填字会被系统拒绝（set_text_failed）。就算手机设了"永不熄屏"，
+     * 省电策略、误碰电源键也会让它黑掉，所以不能指望屏幕自己亮着。
+     *
+     * 返回 true 表示这次是我们把屏幕点亮的。指令做完调 [releaseScreen]，之后按系统设置自己熄屏。
+     * 碰到锁屏（密码 / 滑动解锁）就停手：无障碍服务解不了锁，硬做只会得到一个看不懂的失败。
+     */
+    fun wakeScreen(): Boolean {
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        val wasOff = !pm.isInteractive
+        @Suppress("DEPRECATION")
+        val lock = screenLock ?: pm.newWakeLock(
+            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "sparedroid:ui"
+        ).also { it.setReferenceCounted(false); screenLock = it }
+        lock.acquire(2 * 60_000L) // 兜底：万一忘了放，两分钟后系统自己收回
+        if (wasOff) {
+            waitFor(3_000) { if (pm.isInteractive) true else null }
+            Thread.sleep(800) // 亮屏后目标应用的窗口要一点时间恢复成可操作状态
+        }
+        val km = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
+        if (km.isKeyguardLocked) {
+            releaseScreen()
+            throw CmdError("screen_locked", "手机停在锁屏界面，无障碍服务解不了锁 —— 请把锁屏方式改成「无」")
+        }
+        return wasOff
+    }
+
+    fun releaseScreen() {
+        screenLock?.let { if (it.isHeld) it.release() }
+    }
+
     /**
      * 在当前会话里找到原消息并点"引用"，让接下来 [sendText] 发出的内容挂在它下面。
      *

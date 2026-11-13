@@ -89,6 +89,11 @@ object CommandRunner {
             }
             if (svc == null) throw CmdError("a11y_off", "无障碍服务没开，无法操作企业微信")
 
+            // 要动界面的指令：先确保屏幕亮着（黑屏时读得到界面、但填不了字）
+            if (type in setOf("send_text", "reply_quote", "share_file", "snapshot", "run")) {
+                result.put("woke_screen", svc.wakeScreen())
+            }
+
             when (type) {
                 "send_text" -> {
                     val chat = args.getString("chat")
@@ -174,6 +179,7 @@ object CommandRunner {
             if (touchedUi && args.optBoolean("return_home", true)) {
                 runCatching { svc?.goHome(); Thread.sleep(500) }
             }
+            runCatching { svc?.releaseScreen() } // 放手，之后按系统设置自己熄屏
             busy = false
             EventQueue.get(ctx).enqueue("command_result", result, Config(ctx).deviceId)
         }

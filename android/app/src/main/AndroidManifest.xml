@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 屏幕黑了也要能操作：动界面前点亮屏幕 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- 能看到并拉起"有桌面图标的应用"（launch 指令用）；不需要 QUERY_ALL_PACKAGES。 -->
     <queries>

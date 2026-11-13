@@ -108,6 +108,11 @@ object Uploader {
             put("device_id", cfg.deviceId)
             put("sent_at", System.currentTimeMillis())
             put("dump_mode", cfg.dumpMode)
+            // 屏幕和锁屏状态：动作失败时一眼看出是不是锁屏了
+            val pm = appCtx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val km = appCtx.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+            put("screen_on", pm.isInteractive)
+            put("keyguard_locked", km.isKeyguardLocked)
         }
         val r = Http.postJson("$base/heartbeat", token, body.toString())
         if (!r.ok) throw RuntimeException("心跳失败 HTTP ${r.code}")
