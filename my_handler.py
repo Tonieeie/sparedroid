@@ -1,10 +1,10 @@
 """Your bot's brain. Edit this file, restart, done.
 
-Set WECOMDROID_HANDLER=my_handler:handle in .env to use it.
+Set SPAREDROID_HANDLER=my_handler:handle in .env to use it.
 See examples/ for an FAQ bot, an AI customer service bot and an order-intake bot.
 """
 
-from wecomdroid import Message, Reply
+from sparedroid import Message, Reply
 
 
 def handle(msg: Message, bot) -> str | Reply | None:

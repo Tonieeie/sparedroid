@@ -1,10 +1,10 @@
 """AI customer service: answer questions with Claude, grounded in your own knowledge file.
 
-    pip install "wecomdroid[ai]"          # or: pip install anthropic
-    WECOMDROID_HANDLER=examples.claude_qa:handle
+    pip install "sparedroid[ai]"          # or: pip install anthropic
+    SPAREDROID_HANDLER=examples.claude_qa:handle
     ANTHROPIC_API_KEY=sk-ant-...
-    WECOMDROID_KNOWLEDGE=examples/knowledge.example.md   (your FAQ / product docs, plain text or Markdown)
-    WECOMDROID_AI_MODEL=claude-opus-5-5                  (optional)
+    SPAREDROID_KNOWLEDGE=examples/knowledge.example.md   (your FAQ / product docs, plain text or Markdown)
+    SPAREDROID_AI_MODEL=claude-opus-5-5                  (optional)
 
 How it stays safe for a customer-facing group:
 
@@ -26,9 +26,9 @@ from pathlib import Path
 
 import anthropic
 
-from wecomdroid import Message
+from sparedroid import Message
 
-log = logging.getLogger("wecomdroid.claude_qa")
+log = logging.getLogger("sparedroid.claude_qa")
 
 HANDOFF = "这个问题我需要请同事确认一下，稍后回复你 🙏"
 
@@ -54,7 +54,7 @@ def _client() -> anthropic.Anthropic:
 
 
 def _knowledge() -> str:
-    path = Path(os.environ.get("WECOMDROID_KNOWLEDGE", Path(__file__).with_name("knowledge.example.md")))
+    path = Path(os.environ.get("SPAREDROID_KNOWLEDGE", Path(__file__).with_name("knowledge.example.md")))
     return path.read_text(encoding="utf-8")
 
 
@@ -64,7 +64,7 @@ def handle(msg: Message, bot) -> str | None:
         return "有什么可以帮你的？@我 + 你的问题就好～"
     try:
         response = _client().beta.messages.create(
-            model=os.environ.get("WECOMDROID_AI_MODEL", "claude-opus-5-5"),
+            model=os.environ.get("SPAREDROID_AI_MODEL", "claude-opus-5-5"),
             max_tokens=1024,
             # Group-chat Q&A doesn't need deep reasoning; low effort keeps replies fast and cheap.
             output_config={"effort": "low"},
@@ -93,6 +93,6 @@ def handle(msg: Message, bot) -> str | None:
     answer = "".join(b.text for b in response.content if b.type == "text").strip()
     if not answer or "HANDOFF" in answer:
         # Tell the team someone needs a human; the customer gets a polite holding reply.
-        bot.alert(f"**WeComDroid**: 「{msg.chat}」 里 {msg.sender} 的问题需要人工：{question[:200]}")
+        bot.alert(f"**SpareDroid**: 「{msg.chat}」 里 {msg.sender} 的问题需要人工：{question[:200]}")
         return HANDOFF
     return answer

@@ -3,14 +3,14 @@
 For data that only exists inside an app: today's sales in a merchant app, a queue number,
 stock of an item, a status page. No API needed - the phone opens the app and reads the text.
 
-    WECOMDROID_HANDLER=examples.screen_watch
-    WECOMDROID_APPS=com.example.merchant
+    SPAREDROID_HANDLER=examples.screen_watch
+    SPAREDROID_APPS=com.example.merchant
     WATCH_APP=com.example.merchant
     WATCH_PATTERN=今日订单\\s*(\\d+)          (regex; group 1 is the value to track)
     WATCH_TAP=数据|今日                       (optional: texts to tap, in order, to reach the screen)
     WATCH_EVERY_MINUTES=10
 
-When the value changes you get an alert (WECOMDROID_ALERT_WEBHOOK). Swap ``bot.alert`` for
+When the value changes you get an alert (SPAREDROID_ALERT_WEBHOOK). Swap ``bot.alert`` for
 anything: write to a sheet, call your API, reply in a group.
 """
 
@@ -19,9 +19,9 @@ import os
 import re
 import time
 
-from wecomdroid import Screen
+from sparedroid import Screen
 
-log = logging.getLogger("wecomdroid.screen_watch")
+log = logging.getLogger("sparedroid.screen_watch")
 _state = {"next": 0.0, "last": None}
 
 
@@ -48,12 +48,12 @@ def on_screen(screen: Screen, bot) -> None:
     if screen.tag != "watch":
         return
     if not screen.ok:
-        bot.alert(f"**WeComDroid**: 读取 {os.environ.get('WATCH_APP')} 失败：{screen.error}")
+        bot.alert(f"**SpareDroid**: 读取 {os.environ.get('WATCH_APP')} 失败：{screen.error}")
         return
     value = extract(screen.texts)
     if value is None:
         log.warning("pattern not found on screen: %s", screen.texts[:8])
         return
     if _state["last"] is not None and value != _state["last"]:
-        bot.alert(f"**WeComDroid**: {os.environ.get('WATCH_APP')} 的数值变了：{_state['last']} → {value}")
+        bot.alert(f"**SpareDroid**: {os.environ.get('WATCH_APP')} 的数值变了：{_state['last']} → {value}")
     _state["last"] = value

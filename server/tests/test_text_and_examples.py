@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from examples import echo, keyword_faq, order_intake
-from wecomdroid import Message, Reply
-from wecomdroid.text import NORM_WS, find_trigger_message, norm, split_notification, strip_leading_mentions
+from sparedroid import Message, Reply
+from sparedroid.text import NORM_WS, find_trigger_message, norm, split_notification, strip_leading_mentions
 
 ROOT = Path(__file__).resolve().parents[2]
 NBSP = "\xa0"
@@ -84,7 +84,7 @@ def test_keyword_faq():
 
 
 def test_order_intake_happy_path(tmp_path, monkeypatch):
-    monkeypatch.setenv("WECOMDROID_ORDERS_CSV", str(tmp_path / "o.csv"))
+    monkeypatch.setenv("SPAREDROID_ORDERS_CSV", str(tmp_path / "o.csv"))
     out = order_intake.handle(msg("#下单\n姓名：张三\n电话：138\n产品：标准版\n数量：2"), None)
     assert isinstance(out, Reply) and out.quote and "张三" in out.text
     rows = (tmp_path / "o.csv").read_text(encoding="utf-8-sig").splitlines()
@@ -99,7 +99,7 @@ def test_order_intake_errors_and_template():
 
 
 def test_order_intake_template_round_trips(tmp_path, monkeypatch):
-    monkeypatch.setenv("WECOMDROID_ORDERS_CSV", str(tmp_path / "o.csv"))
+    monkeypatch.setenv("SPAREDROID_ORDERS_CSV", str(tmp_path / "o.csv"))
     filled = order_intake.TEMPLATE.replace("姓名：", "姓名：李四").replace("电话：", "电话：1") \
         .replace("产品：", "产品：A").replace("数量：", "数量：1")
     assert isinstance(order_intake.handle(msg(filled), None), Reply)

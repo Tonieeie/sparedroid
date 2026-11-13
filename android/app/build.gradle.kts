@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.tonieeie.wecomdroid"
+    namespace = "io.github.tonieeie.sparedroid"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "io.github.tonieeie.wecomdroid"
+        applicationId = "io.github.tonieeie.sparedroid"
         minSdk = 26
         targetSdk = 34
         versionCode = 2

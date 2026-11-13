@@ -33,7 +33,7 @@ from .config import Config
 from .store import Store
 from .text import find_trigger_message, norm, split_notification, strip_leading_mentions
 
-log = logging.getLogger("wecomdroid")
+log = logging.getLogger("sparedroid")
 
 READ_TTL_S = 120          # a reply nobody saw within 2 minutes is stale
 REPLY_TTL_S = 24 * 3600   # explicit / later replies
@@ -117,7 +117,7 @@ class Bot:
             fn(*args, self)
         except Exception as exc:  # noqa: BLE001 - user code must not take the bot down
             log.exception("%s failed", name)
-            self.alert(f"**WeComDroid**: {name} crashed: {type(exc).__name__}: {exc}")
+            self.alert(f"**SpareDroid**: {name} crashed: {type(exc).__name__}: {exc}")
 
     def _on_notification(self, p: dict) -> None:
         chat = p.get("chat") or ""
@@ -128,7 +128,7 @@ class Bot:
         if not p.get("mentioned"):
             return
         if not self.cfg.works_in(chat):
-            log.info("mentioned in %r, which is not in WECOMDROID_CHATS; ignoring", chat)
+            log.info("mentioned in %r, which is not in SPAREDROID_CHATS; ignoring", chat)
             return
         if not p.get("can_reply"):
             log.warning("notification from %r has no way to open the chat", chat)
@@ -174,7 +174,7 @@ class Bot:
             out = self.handler(msg, self)
         except Exception as exc:  # noqa: BLE001
             log.exception("handler failed")
-            self.alert(f"**WeComDroid**: handler crashed on a message from {msg.sender} in 「{chat}」: "
+            self.alert(f"**SpareDroid**: handler crashed on a message from {msg.sender} in 「{chat}」: "
                        f"{type(exc).__name__}: {exc}")
             return
         if out is None:
@@ -188,7 +188,7 @@ class Bot:
             self.store.set_meta("last_heartbeat", str(time.time()))
             self.store.set_meta("last_heartbeat_body", json.dumps(hb, ensure_ascii=False)[:4000])
             if self.store.get_meta("phone") == "silent":
-                self.alert("**WeComDroid**: the phone is back online.")
+                self.alert("**SpareDroid**: the phone is back online.")
             self.store.set_meta("phone", "ok")
             broken = [label for key, label in (("accessibility_connected", "accessibility service"),
                                                ("listener_connected", "notification listener"))
@@ -196,8 +196,8 @@ class Bot:
             now = ", ".join(broken)
             if now != (self.store.get_meta("phone_health") or ""):
                 self.store.set_meta("phone_health", now)
-                self.alert(f"**WeComDroid**: on the phone, the {now} stopped. Open the app on the phone to fix it."
-                           if now else "**WeComDroid**: the phone's services are healthy again.")
+                self.alert(f"**SpareDroid**: on the phone, the {now} stopped. Open the app on the phone to fix it."
+                           if now else "**SpareDroid**: the phone's services are healthy again.")
 
     # --------------------------------------------------------- server -> phone
 
@@ -216,7 +216,7 @@ class Bot:
             if mention and m.sender:
                 text = f"@{m.sender} {text}"  # plain text, not a real @, but readers see who is answered
             if not self._allow(m.chat):
-                self.alert(f"**WeComDroid**: rate limit hit in 「{m.chat}」; dropped a reply to {m.sender}.")
+                self.alert(f"**SpareDroid**: rate limit hit in 「{m.chat}」; dropped a reply to {m.sender}.")
                 return ""
             if quote:
                 cmd = self.store.enqueue("reply_quote", {"chat": m.chat, "quote_key": norm(m.text), "text": text,
@@ -239,7 +239,7 @@ class Bot:
         """
         for s in steps:
             if s.get("do") == "launch" and s.get("package") not in self.cfg.apps:
-                raise ValueError(f"{s.get('package')} is not in WECOMDROID_APPS")
+                raise ValueError(f"{s.get('package')} is not in SPAREDROID_APPS")
         with self.lock:
             return self.store.enqueue("run", {"steps": steps}, ttl_s=ttl_s,
                                       context={"purpose": "run", "tag": tag})["id"]
@@ -294,7 +294,7 @@ class Bot:
             last = float(self.store.get_meta("last_heartbeat") or 0)
             if last and now - last > PHONE_SILENT_AFTER_S and self.store.get_meta("phone") != "silent":
                 self.store.set_meta("phone", "silent")
-                self.alert(f"**WeComDroid**: no heartbeat from the phone for {int((now - last) / 60)} min. "
+                self.alert(f"**SpareDroid**: no heartbeat from the phone for {int((now - last) / 60)} min. "
                            "Mentions in groups will get no answer. Check the phone's network, the app, and WeCom.")
             for cmd in self.store.sweep():
                 self._alert_command(cmd, "the phone never fetched it (expired)" if cmd["state"] == "expired"
@@ -311,11 +311,11 @@ class Bot:
             return
         if cmd["type"] in ("snapshot", "dump", "home"):
             if cmd["type"] == "snapshot":
-                self.alert(f"**WeComDroid**: could not read 「{cmd['args'].get('chat')}」 after "
+                self.alert(f"**SpareDroid**: could not read 「{cmd['args'].get('chat')}」 after "
                            f"{cmd['context'].get('sender', 'someone')} mentioned the bot ({why}).")
             return
         what = {"share_file": "a file", "reply_quote": "a reply", "send_text": "a message"}[cmd["type"]]
-        self.alert(f"**WeComDroid**: {what} for 「{cmd['args'].get('chat')}」 did not go out ({why}). "
+        self.alert(f"**SpareDroid**: {what} for 「{cmd['args'].get('chat')}」 did not go out ({why}). "
                    f"Please check the group and send it by hand if needed.\n> {cmd['args'].get('text', cmd['args'].get('filename', ''))[:200]}")
 
     def _allow(self, chat: str) -> bool:

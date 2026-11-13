@@ -1,6 +1,6 @@
 """Configuration from environment variables (and an optional ``.env`` file).
 
-Everything is ``WECOMDROID_*``. See ``.env.example`` at the repo root.
+Everything is ``SPAREDROID_*``. See ``.env.example`` at the repo root.
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ class Config:
     host: str = "127.0.0.1"
     port: int = 8788
     public_url: str = ""
-    """How the phone reaches this server, e.g. ``https://bot.example.com/wecomdroid``."""
+    """How the phone reaches this server, e.g. ``https://bot.example.com/sparedroid``."""
 
     data_dir: Path = field(default_factory=lambda: Path("data"))
     alert_webhook: str = ""
@@ -81,23 +81,23 @@ class Config:
             load_dotenv(env_file)
         e = os.environ.get
         return cls(
-            token=e("WECOMDROID_TOKEN", ""),
-            bot_name=e("WECOMDROID_BOT_NAME", ""),
-            handler=e("WECOMDROID_HANDLER", "examples.echo:handle"),
-            chats=_names(e("WECOMDROID_CHATS", "")),
-            apps=tuple(a.strip() for a in e("WECOMDROID_APPS", "com.tencent.wework").replace("|", ",").split(",")
+            token=e("SPAREDROID_TOKEN", ""),
+            bot_name=e("SPAREDROID_BOT_NAME", ""),
+            handler=e("SPAREDROID_HANDLER", "examples.echo:handle"),
+            chats=_names(e("SPAREDROID_CHATS", "")),
+            apps=tuple(a.strip() for a in e("SPAREDROID_APPS", "com.tencent.wework").replace("|", ",").split(",")
                        if a.strip()),
-            send_label=e("WECOMDROID_SEND_LABEL", "发送"),
-            quote_label=e("WECOMDROID_QUOTE_LABEL", "引用"),
-            ignore_chats=_names(e("WECOMDROID_IGNORE_CHATS", "")),
-            host=e("WECOMDROID_HOST", "127.0.0.1"),
-            port=_int("WECOMDROID_PORT", 8788),
-            public_url=e("WECOMDROID_PUBLIC_URL", "").rstrip("/"),
-            data_dir=Path(e("WECOMDROID_DATA_DIR", "data")),
-            alert_webhook=e("WECOMDROID_ALERT_WEBHOOK", ""),
-            mention_sender=e("WECOMDROID_MENTION_SENDER", "true").lower() not in ("0", "false", "no"),
-            per_chat_per_minute=_int("WECOMDROID_PER_CHAT_PER_MINUTE", 6),
-            global_per_minute=_int("WECOMDROID_GLOBAL_PER_MINUTE", 20),
+            send_label=e("SPAREDROID_SEND_LABEL", "发送"),
+            quote_label=e("SPAREDROID_QUOTE_LABEL", "引用"),
+            ignore_chats=_names(e("SPAREDROID_IGNORE_CHATS", "")),
+            host=e("SPAREDROID_HOST", "127.0.0.1"),
+            port=_int("SPAREDROID_PORT", 8788),
+            public_url=e("SPAREDROID_PUBLIC_URL", "").rstrip("/"),
+            data_dir=Path(e("SPAREDROID_DATA_DIR", "data")),
+            alert_webhook=e("SPAREDROID_ALERT_WEBHOOK", ""),
+            mention_sender=e("SPAREDROID_MENTION_SENDER", "true").lower() not in ("0", "false", "no"),
+            per_chat_per_minute=_int("SPAREDROID_PER_CHAT_PER_MINUTE", 6),
+            global_per_minute=_int("SPAREDROID_GLOBAL_PER_MINUTE", 20),
         )
 
     def works_in(self, chat: str) -> bool:
@@ -108,17 +108,17 @@ class Config:
     def problems(self) -> list[str]:
         out = []
         if len(self.token) < 24:
-            out.append("WECOMDROID_TOKEN must be at least 24 characters")
+            out.append("SPAREDROID_TOKEN must be at least 24 characters")
         if not self.apps:
-            out.append("WECOMDROID_APPS is empty: the phone would not be allowed to touch any app")
+            out.append("SPAREDROID_APPS is empty: the phone would not be allowed to touch any app")
         return out
 
     def warnings(self) -> list[str]:
         """Fine for notification-forwarding or screen-reading setups; wrong for a chat bot."""
         out = []
         if not self.bot_name:
-            out.append("WECOMDROID_BOT_NAME is not set: @-mentions cannot be recognised reliably (chat bot use)")
+            out.append("SPAREDROID_BOT_NAME is not set: @-mentions cannot be recognised reliably (chat bot use)")
         if not self.chats:
-            out.append("WECOMDROID_CHATS is empty: the bot will not reply in any chat "
+            out.append("SPAREDROID_CHATS is empty: the bot will not reply in any chat "
                        "(list chat names separated by |, or * for all)")
         return out

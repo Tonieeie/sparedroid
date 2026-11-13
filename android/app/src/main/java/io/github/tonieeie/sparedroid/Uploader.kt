@@ -1,4 +1,4 @@
-package io.github.tonieeie.wecomdroid
+package io.github.tonieeie.sparedroid
 
 import android.content.ComponentName
 import android.content.Context

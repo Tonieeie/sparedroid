@@ -6,14 +6,14 @@
 # never on the public internet without TLS.
 
 services:
-  wecomdroid:
+  sparedroid:
     build: .
     restart: unless-stopped
     env_file: .env
     volumes:
       - ./data:/data
       # Your own handler: put my_handler.py next to this file and set
-      # WECOMDROID_HANDLER=my_handler:handle
+      # SPAREDROID_HANDLER=my_handler:handle
       - ./my_handler.py:/app/my_handler.py:ro
     expose:
       - "8788"
@@ -25,8 +25,8 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${WECOMDROID_DOMAIN:?set WECOMDROID_DOMAIN in .env}
-    command: caddy reverse-proxy --from ${WECOMDROID_DOMAIN} --to wecomdroid:8788
+      DOMAIN: ${SPAREDROID_DOMAIN:?set SPAREDROID_DOMAIN in .env}
+    command: caddy reverse-proxy --from ${SPAREDROID_DOMAIN} --to sparedroid:8788
     volumes:
       - caddy-data:/data
 

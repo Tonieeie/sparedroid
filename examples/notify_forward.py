@@ -4,12 +4,12 @@ No chat bot involved - the phone just becomes a "notification → HTTP" adapter 
 that have no API. Typical uses: a shop app's "new order" push, a courier app's delivery
 notice, a monitoring app's alarm → your team's Slack / Feishu / WeCom internal group.
 
-    WECOMDROID_HANDLER=examples.notify_forward
-    WECOMDROID_APPS=com.example.shop,com.tencent.wework     (apps to watch)
+    SPAREDROID_HANDLER=examples.notify_forward
+    SPAREDROID_APPS=com.example.shop,com.tencent.wework     (apps to watch)
     FORWARD_WEBHOOK=https://hooks.example.com/...           (receives JSON)
     FORWARD_KEYWORDS=新订单|发货|告警                        (optional: only forward matching ones)
 
-Only apps listed in WECOMDROID_APPS are ever seen. Don't list apps whose notifications
+Only apps listed in SPAREDROID_APPS are ever seen. Don't list apps whose notifications
 you wouldn't paste into that webhook yourself (banking, 2FA codes, private chats).
 """
 
@@ -18,9 +18,9 @@ import logging
 import os
 import urllib.request
 
-from wecomdroid import Notification
+from sparedroid import Notification
 
-log = logging.getLogger("wecomdroid.notify_forward")
+log = logging.getLogger("sparedroid.notify_forward")
 
 
 def wanted(n: Notification) -> bool:

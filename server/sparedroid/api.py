@@ -82,7 +82,7 @@ class Reply:
     """Quote the original message (long-press -> Quote). Falls back to a plain reply."""
 
     mention_sender: bool | None = None
-    """Override WECOMDROID_MENTION_SENDER for this reply."""
+    """Override SPAREDROID_MENTION_SENDER for this reply."""
 
 
 class Actions(Protocol):
@@ -102,4 +102,4 @@ class Actions(Protocol):
         """
 
     def alert(self, text: str) -> None:
-        """Tell your team (WECOMDROID_ALERT_WEBHOOK), e.g. "this customer needs a human"."""
+        """Tell your team (SPAREDROID_ALERT_WEBHOOK), e.g. "this customer needs a human"."""

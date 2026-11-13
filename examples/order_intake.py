@@ -1,7 +1,7 @@
 """Order intake: turn a formatted group message into a row in a spreadsheet, then reply later.
 
-    WECOMDROID_HANDLER=examples.order_intake:handle
-    WECOMDROID_ORDERS_CSV=data/orders.csv      (optional, this is the default)
+    SPAREDROID_HANDLER=examples.order_intake:handle
+    SPAREDROID_ORDERS_CSV=data/orders.csv      (optional, this is the default)
 
 A customer sends, in the group::
 
@@ -16,7 +16,7 @@ The bot checks the fields, appends a row to a CSV (swap ``_save`` for your Feish
 table / Google Sheet / database / webhook) and replies "got it". When the order
 is done - minutes or days later - quote the original message with the result:
 
-    wecomdroid reply <message-id> "张三的订单已完成：https://example.com/invoice/123" --quote
+    sparedroid reply <message-id> "张三的订单已完成：https://example.com/invoice/123" --quote
 
 The message id is in the CSV. Or call ``bot.reply(message_id, text, quote=True)``
 from your own code. This is the pattern the project was born from.
@@ -27,7 +27,7 @@ import os
 import time
 from pathlib import Path
 
-from wecomdroid import Message, Reply
+from sparedroid import Message, Reply
 
 HEADER = "#下单"
 REQUIRED = ["姓名", "电话", "产品", "数量"]
@@ -49,7 +49,7 @@ def parse(body: str) -> tuple[dict, list[str]]:
 
 
 def _save(msg: Message, fields: dict) -> None:
-    path = Path(os.environ.get("WECOMDROID_ORDERS_CSV", "data/orders.csv"))
+    path = Path(os.environ.get("SPAREDROID_ORDERS_CSV", "data/orders.csv"))
     path.parent.mkdir(parents=True, exist_ok=True)
     new = not path.exists()
     with path.open("a", newline="", encoding="utf-8-sig") as f:  # utf-8-sig: Excel opens it correctly

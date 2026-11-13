@@ -1,6 +1,6 @@
 # 企业微信改版后怎么适配
 
-WeComDroid 尽量不依赖企业微信的控件 ID（它们是混淆过的，每个版本都会变），而是靠这些比较稳定的特征：
+SpareDroid 尽量不依赖企业微信的控件 ID（它们是混淆过的，每个版本都会变），而是靠这些比较稳定的特征：
 
 | 动作 | 靠什么认 |
 |---|---|
@@ -15,7 +15,7 @@ WeComDroid 尽量不依赖企业微信的控件 ID（它们是混淆过的，每
 
 ## 新版本不兼容时
 
-1. 服务器上看 `wecomdroid status` 和日志，找到失败的指令和错误码（如 `no_input`、`no_send_button`、`picker_not_shown`）。
+1. 服务器上看 `sparedroid status` 和日志，找到失败的指令和错误码（如 `no_input`、`no_send_button`、`picker_not_shown`）。
    失败时手机会把当时的屏幕文字一起传回来，存在 `data/dumps/*-error_screen-*.json`。
 2. 在 App 里打开**侦察模式**，在机器人手机上把出问题的那几个界面手动走一遍，然后关掉侦察模式。
    每个界面的完整控件树会出现在 `data/dumps/*-dump-*.json`。

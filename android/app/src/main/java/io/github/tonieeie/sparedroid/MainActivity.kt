@@ -1,4 +1,4 @@
-package io.github.tonieeie.wecomdroid
+package io.github.tonieeie.sparedroid
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -73,7 +73,7 @@ class MainActivity : Activity() {
         val apps = field(cfg.apps.joinToString(","), "受控应用包名，逗号分隔")
         val pin = field(cfg.certPin, "服务器证书指纹（连 VPS 必填；局域网调试留空）")
 
-        // 口令和指纹都是几十位的乱码，手敲必错。服务器上 `wecomdroid config`
+        // 口令和指纹都是几十位的乱码，手敲必错。服务器上 `sparedroid config`
         // 打印一行 JSON，复制到手机后点这个按钮，四项一次填好并保存。
         col.addView(button("从剪贴板导入配置") {
             val clip = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
@@ -123,10 +123,10 @@ class MainActivity : Activity() {
         col.addView(dump)
 
         col.addView(label("—— 第一次使用，依次打开下面三项 ——"))
-        col.addView(button("① 打开通知使用权（找到「WeComDroid」并允许）") {
+        col.addView(button("① 打开通知使用权（找到「SpareDroid」并允许）") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         })
-        col.addView(button("② 打开无障碍（已安装的服务 → WeComDroid）") {
+        col.addView(button("② 打开无障碍（已安装的服务 → SpareDroid）") {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         })
         col.addView(button("③ 关闭省电限制（防止被系统杀掉）") { requestIgnoreBattery() })

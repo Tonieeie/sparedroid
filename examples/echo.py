@@ -1,9 +1,9 @@
 """Hello world: reply with what was said. Use it to check the whole loop works.
 
-    WECOMDROID_HANDLER=examples.echo:handle
+    SPAREDROID_HANDLER=examples.echo:handle
 """
 
-from wecomdroid import Message
+from sparedroid import Message
 
 
 def handle(msg: Message, bot) -> str:

@@ -1,6 +1,6 @@
 <div align="center">
 
-# WeComDroid
+# SpareDroid
 
 **Turn a spare Android phone into an API for apps that have none**
 
@@ -9,14 +9,14 @@ allow-list. What to do with what it sees is a few lines of Python on your own se
 First and most polished use case: **AI customer-service / order-taking bots in WeCom (企业微信) external groups.**
 
 WeCom's official bots can't join external groups (groups with customers outside your company).
-WeComDroid lets an old Android phone sit in the group for you: when someone @-mentions it,
+SpareDroid lets an old Android phone sit in the group for you: when someone @-mentions it,
 it reads the message, asks your code what to say, and sends the reply.
 
 [中文](README.md) · [Quick start](#quick-start) · [Write your own logic](#write-your-own-logic)
 
 </div>
 
-![WeComDroid](docs/media/hero.png)
+![SpareDroid](docs/media/hero.png)
 
 ## What it does
 
@@ -61,7 +61,7 @@ Bot       [📄 quote_zhangsan.pdf]                                ← files too
 
 **Built on Android's official Accessibility API**: no root, no hooking, WeCom is not modified.
 **Deliberately not included:** mass messaging, auto-adding contacts, auto-creating groups. Those are
-spam tools and the main reason accounts get banned. WeComDroid answers when it is asked, nothing more.
+spam tools and the main reason accounts get banned. SpareDroid answers when it is asked, nothing more.
 
 ## Quick start
 
@@ -69,14 +69,14 @@ You need a spare Android phone (8.0+, not HarmonyOS), a **dedicated** WeCom memb
 and a server that runs Docker.
 
 ```bash
-git clone https://github.com/Tonieeie/wecomdroid && cd wecomdroid
-cp .env.example .env        # set WECOMDROID_TOKEN, BOT_NAME, CHATS, DOMAIN
+git clone https://github.com/Tonieeie/sparedroid && cd sparedroid
+cp .env.example .env        # set SPAREDROID_TOKEN, BOT_NAME, CHATS, DOMAIN
 docker compose up -d        # includes Caddy with automatic HTTPS
-docker compose exec wecomdroid wecomdroid config   # prints one line for the phone
+docker compose exec sparedroid sparedroid config   # prints one line for the phone
 ```
 
 On the phone: install WeCom and log in as the bot; install the APK from
-[Releases](https://github.com/Tonieeie/wecomdroid/releases); grant **notification access**,
+[Releases](https://github.com/Tonieeie/sparedroid/releases); grant **notification access**,
 **accessibility**, and **no battery restrictions**; copy the config line and tap
 「从剪贴板导入配置」 (import from clipboard). Details: [docs/phone-setup.md](docs/phone-setup.md).
 
@@ -84,7 +84,7 @@ Then say `@bot hello` in your test group.
 
 ## Ready-made handlers
 
-| Set `WECOMDROID_HANDLER=` | |
+| Set `SPAREDROID_HANDLER=` | |
 |---|---|
 | `examples.echo:handle` | Echo, to test the loop |
 | `examples.keyword_faq:handle` | FAQ from a JSON file. No AI, no cost |
@@ -94,7 +94,7 @@ Then say `@bot hello` in your test group.
 ## Write your own logic
 
 ```python
-from wecomdroid import Message, Reply
+from sparedroid import Message, Reply
 
 def handle(msg: Message, bot) -> str | Reply | None:
     if "price" in msg.body:
@@ -105,7 +105,7 @@ def handle(msg: Message, bot) -> str | Reply | None:
 ```
 
 Later, from anywhere: `bot.reply(msg_id, text, quote=True)`, `bot.send_file(chat, path, caption=...)`,
-`bot.alert(text)` - or the CLI: `wecomdroid reply <id> "..." --quote`.
+`bot.alert(text)` - or the CLI: `sparedroid reply <id> "..." --quote`.
 
 ## Beyond chat (0.2.0)
 
@@ -120,7 +120,7 @@ def on_screen(screen, bot): ...    # screen.texts = everything that was on scree
 ![Any app](docs/media/demo-any.gif)
 
 Examples: `examples.notify_forward` (notifications → webhook), `examples.screen_watch` (read a number
-on a schedule, alert on change). Set `WECOMDROID_APPS` to the package names the phone may touch;
+on a schedule, alert on change). Set `SPAREDROID_APPS` to the package names the phone may touch;
 everything else is invisible to it. The generic steps are new and not yet verified on a real device;
 the WeCom chat flow is. The Chinese README has the full requirements and setup tables.
 

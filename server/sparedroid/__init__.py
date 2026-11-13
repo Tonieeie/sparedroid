@@ -1,4 +1,4 @@
-"""WeComDroid server: turn a spare Android phone into a WeCom group bot."""
+"""SpareDroid server: turn a spare Android phone into a WeCom group bot."""
 
 from .api import Actions, Message, Notification, Reply, Screen
 

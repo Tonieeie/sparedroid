@@ -5,10 +5,10 @@ import uuid
 import pytest
 
 from examples import notify_forward, screen_watch
-from wecomdroid import Notification, Screen
-from wecomdroid.bot import Bot, load_handler, load_hooks
-from wecomdroid.config import Config
-from wecomdroid.store import Store
+from sparedroid import Notification, Screen
+from sparedroid.bot import Bot, load_handler, load_hooks
+from sparedroid.config import Config
+from sparedroid.store import Store
 
 SHOP = "com.example.shop"
 

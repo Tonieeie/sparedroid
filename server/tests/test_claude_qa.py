@@ -7,7 +7,7 @@ import pytest
 anthropic = pytest.importorskip("anthropic")
 
 from examples import claude_qa  # noqa: E402
-from wecomdroid import Message  # noqa: E402
+from sparedroid import Message  # noqa: E402
 
 
 class FakeClient:

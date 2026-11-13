@@ -1,4 +1,4 @@
-package io.github.tonieeie.wecomdroid
+package io.github.tonieeie.sparedroid
 
 import android.content.ContentProvider
 import android.content.ContentValues
@@ -61,7 +61,7 @@ class FileShareProvider : ContentProvider() {
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = 0
 
     companion object {
-        const val AUTHORITY = "io.github.tonieeie.wecomdroid.files"
+        const val AUTHORITY = "io.github.tonieeie.sparedroid.files"
 
         fun shareDir(ctx: Context): File = File(ctx.filesDir, "share").apply { mkdirs() }
 

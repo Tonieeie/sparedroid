@@ -1,12 +1,12 @@
 """Command line.
 
-    wecomdroid serve                         run the server (what Docker / systemd runs)
-    wecomdroid config                        print the one-line config to import on the phone
-    wecomdroid status                        last heartbeat, queued commands
-    wecomdroid messages                      recent messages that mentioned the bot (with ids)
-    wecomdroid reply <msg-id> <text> [--quote]   reply to one of them, now
-    wecomdroid send <chat> <text>            send text to a chat that recently messaged the bot
-    wecomdroid send-file <chat> <file> [--caption TEXT]
+    sparedroid serve                         run the server (what Docker / systemd runs)
+    sparedroid config                        print the one-line config to import on the phone
+    sparedroid status                        last heartbeat, queued commands
+    sparedroid messages                      recent messages that mentioned the bot (with ids)
+    sparedroid reply <msg-id> <text> [--quote]   reply to one of them, now
+    sparedroid send <chat> <text>            send text to a chat that recently messaged the bot
+    sparedroid send-file <chat> <file> [--caption TEXT]
 
 The last three only queue a command in the database; the running server hands it to the phone.
 """
@@ -29,14 +29,14 @@ from .store import Store
 
 
 def _store(cfg: Config) -> Store:
-    return Store(cfg.data_dir / "wecomdroid.db")
+    return Store(cfg.data_dir / "sparedroid.db")
 
 
 def serve(cfg: Config) -> None:
     problems = cfg.problems()
     if problems:
         sys.exit("Config problems:\n  - " + "\n  - ".join(problems))
-    sys.path.insert(0, ".")  # so WECOMDROID_HANDLER=my_handler:handle works from the working dir
+    sys.path.insert(0, ".")  # so SPAREDROID_HANDLER=my_handler:handle works from the working dir
     bot = Bot(cfg, _store(cfg), load_handler(cfg.handler), hooks=load_hooks(cfg.handler))
     prefix = urlparse(cfg.public_url).path if cfg.public_url else ""
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(bot, prefix))
@@ -51,7 +51,7 @@ def serve(cfg: Config) -> None:
                 logging.exception("tick failed")
 
     threading.Thread(target=patrol, daemon=True).start()
-    log = logging.getLogger("wecomdroid")
+    log = logging.getLogger("sparedroid")
     log.info("listening on http://%s:%d%s  handler=%s  hooks=%s", cfg.host, cfg.port, prefix or "/", cfg.handler,
              ",".join(bot.hooks) or "-")
     log.info("apps: %s", ", ".join(cfg.apps))
@@ -60,7 +60,7 @@ def serve(cfg: Config) -> None:
     for w in cfg.warnings():
         log.warning(w)
     if not cfg.alert_webhook:
-        log.warning("WECOMDROID_ALERT_WEBHOOK is not set: nobody will be told if the phone goes offline")
+        log.warning("SPAREDROID_ALERT_WEBHOOK is not set: nobody will be told if the phone goes offline")
     server.serve_forever()
 
 
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # Windows consoles choke on emoji otherwise
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="replace")
-    ap = argparse.ArgumentParser(prog="wecomdroid", description=__doc__,
+    ap = argparse.ArgumentParser(prog="sparedroid", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("serve", "config", "status", "messages"):

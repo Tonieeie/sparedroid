@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WeComDroid</string>
-    <string name="a11y_label">WeComDroid</string>
-    <string name="listener_label">WeComDroid · 消息监听</string>
+    <string name="app_name">SpareDroid</string>
+    <string name="a11y_label">SpareDroid</string>
+    <string name="listener_label">SpareDroid · 消息监听</string>
     <string name="a11y_desc">读取企业微信聊天界面的文字，并按服务器指令在指定会话中发送消息。只作用于企业微信。</string>
 </resources>

@@ -1,25 +1,25 @@
 <div align="center">
 
-# WeComDroid
+# SpareDroid
 
 **把一台旧安卓手机，变成任何应用的「API」**
 
 很多应用没有接口，或者接口不让你用（比如企业微信的外部群）。
-WeComDroid 让一台闲置安卓手机替你盯着这些应用：**听它的通知、读它的屏幕、替你点和输入**，
+SpareDroid 让一台闲置安卓手机替你盯着这些应用：**听它的通知、读它的屏幕、替你点和输入**，
 而「看到什么该怎么办」写在你自己服务器上的几行 Python 里。
 
 第一个、也是打磨得最完整的用例：**企业微信外部群里的 AI 客服 / 接单机器人**。
 
 [English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
 
-![CI](https://github.com/Tonieeie/wecomdroid/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Tonieeie/sparedroid/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Android](https://img.shields.io/badge/android-8.0%2B-green)
 
 </div>
 
-![WeComDroid](docs/media/hero.png)
+![SpareDroid](docs/media/hero.png)
 
 ## 它是什么
 
@@ -100,16 +100,16 @@ App 不申请定位、通讯录、短信、相机、麦克风、存储权限。
 | 企业微信：识别 @、读消息、回复、引用回复、发文件 | ✅ 真机验证（2026-11，一台安卓机） |
 | 任意应用的通知转发 | ⚠️ 代码与测试完成，真机上只验证过企业微信的通知 |
 | 任意应用的 `bot.run` 通用动作（打开 / 读屏 / 点击 / 输入 / 滚动） | ⚠️ 0.2.0 新增，通过编译和单元测试，**尚未真机验证** |
-| 其它聊天应用的发消息 / 引用 | ⚠️ 需要设置按钮文字（`WECOMDROID_SEND_LABEL` 等），未验证 |
+| 其它聊天应用的发消息 / 引用 | ⚠️ 需要设置按钮文字（`SPAREDROID_SEND_LABEL` 等），未验证 |
 
-欢迎用 [兼容性反馈](https://github.com/Tonieeie/wecomdroid/issues/new/choose) 告诉我们你的机型和应用。
+欢迎用 [兼容性反馈](https://github.com/Tonieeie/sparedroid/issues/new/choose) 告诉我们你的机型和应用。
 
 ## 安装
 
 ### 1. 服务器
 
 ```bash
-git clone https://github.com/Tonieeie/wecomdroid && cd wecomdroid
+git clone https://github.com/Tonieeie/sparedroid && cd sparedroid
 cp .env.example .env
 ```
 
@@ -117,20 +117,20 @@ cp .env.example .env
 
 | 变量 | 填什么 |
 |---|---|
-| `WECOMDROID_TOKEN` | 手机和服务器之间的口令，至少 24 位。生成：`python -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `WECOMDROID_APPS` | 受控应用的包名，逗号分隔。默认 `com.tencent.wework`（企业微信） |
-| `WECOMDROID_HANDLER` | 用哪段逻辑。先用 `examples.echo:handle` 测通 |
-| `WECOMDROID_BOT_NAME` | （聊天机器人）机器人在群里显示的名字，必须一字不差 |
-| `WECOMDROID_CHATS` | （聊天机器人）在哪些群里工作，`|` 分隔；`*` 表示所有群 |
-| `WECOMDROID_DOMAIN` / `WECOMDROID_PUBLIC_URL` | 你的域名，如 `bot.example.com` / `https://bot.example.com` |
-| `WECOMDROID_ALERT_WEBHOOK` | （强烈建议）一个内部群机器人的 webhook，手机掉线、消息没发出去时通知你 |
+| `SPAREDROID_TOKEN` | 手机和服务器之间的口令，至少 24 位。生成：`python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `SPAREDROID_APPS` | 受控应用的包名，逗号分隔。默认 `com.tencent.wework`（企业微信） |
+| `SPAREDROID_HANDLER` | 用哪段逻辑。先用 `examples.echo:handle` 测通 |
+| `SPAREDROID_BOT_NAME` | （聊天机器人）机器人在群里显示的名字，必须一字不差 |
+| `SPAREDROID_CHATS` | （聊天机器人）在哪些群里工作，`|` 分隔；`*` 表示所有群 |
+| `SPAREDROID_DOMAIN` / `SPAREDROID_PUBLIC_URL` | 你的域名，如 `bot.example.com` / `https://bot.example.com` |
+| `SPAREDROID_ALERT_WEBHOOK` | （强烈建议）一个内部群机器人的 webhook，手机掉线、消息没发出去时通知你 |
 
 ```bash
 docker compose up -d
-docker compose exec wecomdroid wecomdroid config    # 打印一行配置，手机上要用
+docker compose exec sparedroid sparedroid config    # 打印一行配置，手机上要用
 ```
 
-不用 Docker：`pip install ./server && wecomdroid serve`，自己配反向代理和 HTTPS。
+不用 Docker：`pip install ./server && sparedroid serve`，自己配反向代理和 HTTPS。
 
 > 怎么查应用的包名：应用商店网页版链接里的 `id=` 后面那串；或者手机上装一个「包名查看器」。
 > 常见的：企业微信 `com.tencent.wework`。
@@ -138,8 +138,8 @@ docker compose exec wecomdroid wecomdroid config    # 打印一行配置，手�
 ### 2. 手机
 
 1. 安装并登录要操作的应用（做企业微信机器人：登录机器人账号，把它拉进一个测试群）。
-2. 安装 WeComDroid：从 [Releases](https://github.com/Tonieeie/wecomdroid/releases) 下载 APK，或自己编译（`cd android && ./gradlew assembleDebug`，需要 JDK 17）。
-3. 打开 WeComDroid，依次点三个按钮：**① 通知使用权**、**② 无障碍**、**③ 关闭省电限制**。
+2. 安装 SpareDroid：从 [Releases](https://github.com/Tonieeie/sparedroid/releases) 下载 APK，或自己编译（`cd android && ./gradlew assembleDebug`，需要 JDK 17）。
+3. 打开 SpareDroid，依次点三个按钮：**① 通知使用权**、**② 无障碍**、**③ 关闭省电限制**。
 4. 系统设置里允许它**自启动 / 后台运行**；开发者选项里打开**「充电时不锁屏」**；锁屏方式设为「无」。
 5. 把服务器打印的那行配置发到手机上（比如用微信文件传输助手），复制，点 **「从剪贴板导入配置」**。
 6. 状态面板出现四个 ✅、「最近心跳成功」有时间，就连上了。
@@ -149,11 +149,11 @@ docker compose exec wecomdroid wecomdroid config    # 打印一行配置，手�
 ### 3. 试一下
 
 在测试群里发 `@机器人 你好`，几秒后它回 `@你 收到：你好`。
-服务器上 `wecomdroid status` 能看到手机心跳，`wecomdroid messages` 能看到收到的消息。
+服务器上 `sparedroid status` 能看到手机心跳，`sparedroid messages` 能看到收到的消息。
 
 ## 写你自己的逻辑
 
-在一个 Python 文件里写下面任意几个函数，把 `WECOMDROID_HANDLER` 指向它（如 `my_handler:handle`）。
+在一个 Python 文件里写下面任意几个函数，把 `SPAREDROID_HANDLER` 指向它（如 `my_handler:handle`）。
 
 | 你写的函数 | 什么时候被调用 |
 |---|---|
@@ -194,11 +194,11 @@ def on_screen(screen, bot):
         print(screen.texts)          # ['今日订单', '13', '今日营业额', '¥3,668', ...]
 ```
 
-命令行也能直接用：`wecomdroid messages`、`wecomdroid reply <id> "…" --quote`、`wecomdroid send-file <会话> <文件>`。
+命令行也能直接用：`sparedroid messages`、`sparedroid reply <id> "…" --quote`、`sparedroid send-file <会话> <文件>`。
 
 ## 安全边界
 
-- **应用白名单**：手机只听、只读、只点 `WECOMDROID_APPS` 里列出的应用。没列出的（银行、支付、私人聊天）它看不到也不会碰。别把你不愿意把屏幕内容交给服务器的应用列进去。
+- **应用白名单**：手机只听、只读、只点 `SPAREDROID_APPS` 里列出的应用。没列出的（银行、支付、私人聊天）它看不到也不会碰。别把你不愿意把屏幕内容交给服务器的应用列进去。
 - **只用在你自己的手机和账号上。** 这是把你自己的设备自动化，不是读别人手机的工具；App 有常驻状态面板，不隐藏自己。
 - **聊天场景只在被 @ 时回应**，自带频率限制。刻意不做群发、自动加好友、自动拉群 —— 那是发广告的功能，也是封号的主要原因。
 - **认不出界面就停手**，不猜着点；发消息前核对会话名，发完确认发出；不确定的一律报给人，不自动重发。
@@ -240,9 +240,9 @@ App 带**侦察模式**，能把任意受控应用的界面结构导出来，适
 ![AI 客服](docs/media/demo-ai.gif)
 
 ```bash
-WECOMDROID_HANDLER=examples.claude_qa:handle
+SPAREDROID_HANDLER=examples.claude_qa:handle
 ANTHROPIC_API_KEY=sk-ant-...
-WECOMDROID_KNOWLEDGE=你的知识库.md
+SPAREDROID_KNOWLEDGE=你的知识库.md
 ```
 
 ### 2. 群里格式化接单
@@ -252,10 +252,10 @@ WECOMDROID_KNOWLEDGE=你的知识库.md
 ![接单](docs/media/demo-order.gif)
 
 ```bash
-WECOMDROID_HANDLER=examples.order_intake:handle
+SPAREDROID_HANDLER=examples.order_intake:handle
 # 处理完之后：
-wecomdroid reply <消息ID> "张三的订单已完成：https://…" --quote
-wecomdroid send-file <群名> 报价单_张三.pdf
+sparedroid reply <消息ID> "张三的订单已完成：https://…" --quote
+sparedroid send-file <群名> 报价单_张三.pdf
 ```
 
 这个项目就是从这个场景里长出来的：渠道在企业微信外部群里发保险订单，原来要人工抄进表格。
@@ -267,9 +267,9 @@ wecomdroid send-file <群名> 报价单_张三.pdf
 ![任意应用](docs/media/demo-any.gif)
 
 ```bash
-WECOMDROID_APPS=com.example.shop
-WECOMDROID_HANDLER=examples.notify_forward     # 通知 → webhook
-WECOMDROID_HANDLER=examples.screen_watch       # 定时读屏，数值变化时提醒
+SPAREDROID_APPS=com.example.shop
+SPAREDROID_HANDLER=examples.notify_forward     # 通知 → webhook
+SPAREDROID_HANDLER=examples.screen_watch       # 定时读屏，数值变化时提醒
 ```
 
 ### 4. 关键词 FAQ（不用 AI）
@@ -277,7 +277,7 @@ WECOMDROID_HANDLER=examples.screen_watch       # 定时读屏，数值变化时�
 改一个 JSON 文件就能用，零成本、回答完全可控。
 
 ```bash
-WECOMDROID_HANDLER=examples.keyword_faq:handle
+SPAREDROID_HANDLER=examples.keyword_faq:handle
 ```
 
 ### 还能做什么

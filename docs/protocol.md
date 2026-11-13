@@ -1,6 +1,6 @@
 # Phone ⇄ server protocol
 
-All requests carry `Authorization: Bearer <WECOMDROID_TOKEN>`. Wrong token and unknown path both
+All requests carry `Authorization: Bearer <SPAREDROID_TOKEN>`. Wrong token and unknown path both
 return 404. Paths are relative to the endpoint configured on the phone (e.g. `https://bot.example.com`).
 
 | Direction | Endpoint | Body |
@@ -47,5 +47,5 @@ Commands are never re-sent automatically. If a result never arrives the server a
 ## Text normalisation
 
 `quote_key` is the bubble text with every character in `NORM_WS` collapsed to one space and trimmed.
-The list is spelled out in both `server/wecomdroid/text.py` and `BotAccessibilityService.kt`
+The list is spelled out in both `server/sparedroid/text.py` and `BotAccessibilityService.kt`
 (Python and Kotlin disagree on what `\s` means, e.g. U+3000). A test fails if they differ.

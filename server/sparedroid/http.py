@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 
 from .bot import Bot
 
-log = logging.getLogger("wecomdroid")
+log = logging.getLogger("sparedroid")
 MAX_BODY = 8 * 1024 * 1024
 
 
@@ -25,7 +25,7 @@ def make_handler(bot: Bot, prefix: str = "") -> type[BaseHTTPRequestHandler]:
     prefix = prefix.rstrip("/")
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "wecomdroid"
+        server_version = "sparedroid"
         sys_version = ""
         timeout = 30
 

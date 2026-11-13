@@ -1,4 +1,4 @@
-package io.github.tonieeie.wecomdroid
+package io.github.tonieeie.sparedroid
 
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>WeComDroid demo</title>
+<title>SpareDroid demo</title>
 <!--
   Source for the README images. Not a WeCom screenshot: a stylised chat UI that
   shows what the bot does. Each scene is a pure function of time, so frames are
@@ -140,7 +140,7 @@ const SCENES = {
     chips: [[1200, 2100, "🔔 有人 @ 了机器人"], [2100, 3200, "📖 读取这条消息"], [3200, 4300, "⌨️ 正在回复…"],
             [6500, 7300, "🔔 有人 @ 了机器人"], [7300, 8100, "📖 读取这条消息"], [8100, 8900, "⌨️ 正在回复…"]],
     log: [
-      [-1, "dim", "wecomdroid serve · handler=examples.claude_qa"],
+      [-1, "dim", "sparedroid serve · handler=examples.claude_qa"],
       [1200, "in", "← 客户服务群 · Alice：你们周末营业吗？"],
       [2400, "dim", "  claude-opus-5-5 · knowledge.md (cached)"],
       [3300, "out", "→ 周末也营业哦，10:00–16:00 😊"],
@@ -170,13 +170,13 @@ const SCENES = {
     ],
     chips: [[1100, 2000, "🔔 有人 @ 了机器人"], [2000, 3500, "📖 读取订单"], [7100, 7900, "↩️ 长按 → 引用"], [9500, 10300, "📤 分享 → 选群 → 核对"]],
     log: [
-      [-1, "dim", "wecomdroid serve · handler=examples.order_intake"],
+      [-1, "dim", "sparedroid serve · handler=examples.order_intake"],
       [1100, "in", "← 渠道合作群 · 王经理：#下单 姓名：张三 …"],
       [2300, "out", "  ✓ 校验通过 · 写入 orders.csv 第 12 行"],
       [2900, "dim", "  msg.id = 3f9a2c"],
-      [6400, "cmd", "$ wecomdroid reply 3f9a2c \"已完成 ✅ 发票：…\" --quote"],
+      [6400, "cmd", "$ sparedroid reply 3f9a2c \"已完成 ✅ 发票：…\" --quote"],
       [8000, "dim", "  ✓ 已引用原消息回复"],
-      [8800, "cmd", "$ wecomdroid send-file 渠道合作群 报价单_张三.pdf"],
+      [8800, "cmd", "$ sparedroid send-file 渠道合作群 报价单_张三.pdf"],
       [10400, "dim", "  ✓ 已发送文件"],
     ],
     stepAt: [[600, 0], [2300, 1], [6400, 2], [8800, 3]],
@@ -197,7 +197,7 @@ const SCENES = {
     scan: [5200, 6700],
     chips: [[4200, 5200, "⏰ 定时任务 · 打开应用"], [5200, 6700, "📖 读取屏幕文字"], [8300, 9300, "🏠 回到桌面"]],
     log: [
-      [-1, "dim", "wecomdroid serve · apps=com.example.shop"],
+      [-1, "dim", "sparedroid serve · apps=com.example.shop"],
       [900, "in", "← [小店管家] 新订单：张三 下单 2 件 · ¥268"],
       [1900, "out", "→ 已转发到团队群（webhook）"],
       [4300, "cmd", "$ bot.run([launch, tap「数据」, read])"],
@@ -218,7 +218,7 @@ function bubbleHTML(m, a) {
   const [_, who, text, ext = {}] = m;
   const me = who === "me";
   const style = `opacity:${a};transform:translateY(${(1 - a) * 14}px)`;
-  const av = me ? `<div class="av" style="background:linear-gradient(135deg,#4f46e5,#22c55e)">W</div>`
+  const av = me ? `<div class="av" style="background:linear-gradient(135deg,#4f46e5,#22c55e)">S</div>`
                 : `<div class="av" style="background:${AV[who] || "#94a3b8"}">${who[0]}</div>`;
   let body = ext.file
     ? `<div class="file"><div class="ic">PDF</div><div><b>${esc(ext.file[0])}</b><span>${ext.file[1]}</span></div></div>`
@@ -277,7 +277,7 @@ function render(t) {
   const skip = sc.skip && t >= sc.skip[0] && t < sc.skip[1] ? sc.skip : null;
   const skipA = skip ? Math.min(appear(t, skip[0], 250), 1 - ease((t - skip[1] + 250) / 250)) : 0;
   document.getElementById("root").innerHTML = `<div class="stage">
-    <div class="left"><div class="brand"><span class="logo">W</span>WeComDroid</div>${phoneHTML(sc, t)}</div>
+    <div class="left"><div class="brand"><span class="logo">S</span>SpareDroid</div>${phoneHTML(sc, t)}</div>
     <div class="right">
       <div class="kicker">${sc.kicker}</div>
       <h1>${esc(sc.title).replace("\n", "<br>")}</h1>
@@ -305,7 +305,7 @@ function renderHero() {
   ]};
   document.getElementById("root").innerHTML = `<div class="hero">
     <div style="flex:1">
-      <div class="brand"><span class="logo">W</span>WeComDroid</div>
+      <div class="brand"><span class="logo">S</span>SpareDroid</div>
       <h1>旧安卓手机<br>变身企业微信 AI 客服</h1>
       <div class="sub">外部群也能用 · 被 @ 才回应 · 逻辑写在你的 Python 里</div>
       <div class="feats">

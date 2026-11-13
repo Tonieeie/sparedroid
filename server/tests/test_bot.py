@@ -10,12 +10,12 @@ from http.server import ThreadingHTTPServer
 
 import pytest
 
-from wecomdroid import Message, Reply
-from wecomdroid.bot import Bot
-from wecomdroid.config import Config
-from wecomdroid.http import make_handler
-from wecomdroid.store import Store
-from wecomdroid.text import norm
+from sparedroid import Message, Reply
+from sparedroid.bot import Bot
+from sparedroid.config import Config
+from sparedroid.http import make_handler
+from sparedroid.store import Store
+from sparedroid.text import norm
 
 NBSP = "\xa0"
 CHAT = "客户群A"
@@ -197,7 +197,7 @@ def test_send_file_is_served_only_after_fetch_and_unchanged(make_bot, tmp_path):
 
 def test_http_requires_token_everywhere(make_bot):
     bot, _ = make_bot()
-    srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(bot, "/wecomdroid"))
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(bot, "/sparedroid"))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
 
@@ -210,11 +210,11 @@ def test_http_requires_token_everywhere(make_bot):
             return e.code
 
     try:
-        assert call("/wecomdroid/commands") == 404
-        assert call("/wecomdroid/commands", "wrong") == 404
+        assert call("/sparedroid/commands") == 404
+        assert call("/sparedroid/commands", "wrong") == 404
         assert call("/commands", TOKEN) == 404  # wrong prefix
-        assert call("/wecomdroid/commands", TOKEN) == {"commands": []}
-        assert call("/wecomdroid/heartbeat", TOKEN, {"accessibility_connected": True}) == {"ok": True}
+        assert call("/sparedroid/commands", TOKEN) == {"commands": []}
+        assert call("/sparedroid/heartbeat", TOKEN, {"accessibility_connected": True}) == {"ok": True}
     finally:
         srv.shutdown()
 

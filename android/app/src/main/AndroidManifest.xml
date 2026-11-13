@@ -49,7 +49,7 @@
         <!-- 只读借文件给企业微信；不导出，只能通过分享时附带的临时授权访问 -->
         <provider
             android:name=".FileShareProvider"
-            android:authorities="io.github.tonieeie.wecomdroid.files"
+            android:authorities="io.github.tonieeie.sparedroid.files"
             android:exported="false"
             android:grantUriPermissions="true" />
 
