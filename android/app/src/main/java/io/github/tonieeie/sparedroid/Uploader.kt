@@ -113,6 +113,16 @@ object Uploader {
             val km = appCtx.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
             put("screen_on", pm.isInteractive)
             put("keyguard_locked", km.isKeyguardLocked)
+            // 电量：手机要长期插电，拔了线或者电快没了要有人知道
+            val bat = appCtx.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+            if (bat != null) {
+                val level = bat.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                val scale = bat.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+                if (level >= 0 && scale > 0) put("battery_level", level * 100 / scale)
+                put("plugged", bat.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0)
+            }
+            put("features", org.json.JSONArray(cfg.features.sorted()))
+            put("sdk", android.os.Build.VERSION.SDK_INT)
         }
         val r = Http.postJson("$base/heartbeat", token, body.toString())
         if (!r.ok) throw RuntimeException("心跳失败 HTTP ${r.code}")

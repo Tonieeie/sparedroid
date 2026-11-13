@@ -181,3 +181,57 @@ def test_end_to_end_over_stdio(tmp_path):
             "reply_to_message", "send_message", "send_file", "recent_notifications"} <= names
     assert payload(screen) == {"ok": True, "app": SHOP, "texts": SCREEN}
     assert payload(blocked)["ok"] is False
+
+
+# ---- batch 1 ----
+
+def test_switched_off_features_come_back_as_errors(tmp_path):
+    from sparedroid.features import parse
+
+    cfg = make_cfg(tmp_path)
+    cfg.features = parse("read")
+    phone = Phone(cfg, Store(tmp_path / "db"), timeout_s=0.3, poll_s=0.05)
+    assert "feature_disabled" in phone.send(CHAT, "hi")["error"]
+    assert phone.act({"do": "tap", "text": "x"})["error"] == "feature_disabled"
+    assert phone.screenshot()["error"] == "feature_disabled"
+
+
+def test_screenshot_returns_the_saved_image(tmp_path):
+    import base64
+
+    from sparedroid.features import parse
+
+    cfg = make_cfg(tmp_path)
+    cfg.features = parse("default,screenshot")
+
+    class ShotPhone(FakePhone):
+        def run(self):
+            while not self.stop:
+                for cmd in self.bot.commands():
+                    self.bot.handle_events([{"event_id": uuid.uuid4().hex, "type": "command_result", "payload": {
+                        "command_id": cmd["id"], "type": "run", "ok": True, "package": SHOP,
+                        "screen": {"nodes": [{"text": "hello"}]},
+                        "screenshot": {"format": "jpeg", "data": base64.b64encode(b"\xff\xd8jpeg").decode()}}}])
+                time.sleep(0.05)
+
+    fake = ShotPhone(cfg, tmp_path / "sparedroid.db")
+    fake.start()
+    try:
+        out = Phone(cfg, Store(tmp_path / "sparedroid.db"), timeout_s=5, poll_s=0.05).screenshot(SHOP)
+    finally:
+        fake.stop = True
+    assert out["ok"] and out["texts"] == ["hello"] and Path(out["screenshot"]).read_bytes() == b"\xff\xd8jpeg"
+
+
+def test_new_tools_are_listed():
+    pytest.importorskip("mcp")
+    import asyncio as aio
+
+    from sparedroid.mcp import build
+
+    class Dummy:
+        pass
+
+    server = build(Dummy())
+    names = {t.name for t in aio.run(server.list_tools())}
+    assert {"screenshot", "long_press", "swipe", "wait_for_text", "tap_notification_button", "send_image"} <= names

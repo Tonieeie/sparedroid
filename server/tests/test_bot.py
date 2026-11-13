@@ -63,7 +63,7 @@ def test_reply_flows_back_with_sender_prefix(make_bot):
     [cmd] = converse(bot)
     assert cmd["type"] == "send_text" and cmd["args"] == {
         "chat": CHAT, "text": "@Alice echo:营业时间是几点", "expires_at": cmd["args"]["expires_at"],
-        "send_label": "发送", "quote_label": "引用"}
+        "send_label": "发送", "quote_label": "引用", "prefer_quick": True}
     assert alerts == []
 
 

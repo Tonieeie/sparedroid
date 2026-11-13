@@ -57,6 +57,7 @@ def serve(cfg: Config) -> None:
     log.info("listening on http://%s:%d%s  handler=%s  hooks=%s", cfg.host, cfg.port, prefix or "/", cfg.handler,
              ",".join(bot.hooks) or "-")
     log.info("apps: %s", ", ".join(cfg.apps))
+    log.info("features: %s", ", ".join(sorted(cfg.features)))
     log.info("chats: %s%s", "every chat" if "*" in cfg.chats else " | ".join(sorted(cfg.chats)),
              f"  (ignoring: {' | '.join(sorted(cfg.ignore_chats))})" if cfg.ignore_chats else "")
     for w in cfg.warnings():
@@ -108,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         endpoint = cfg.public_url or f"http://<this-machine-ip>:{cfg.port}"
         print("Copy this whole line to the phone, then tap 「从剪贴板导入配置」 (Import from clipboard):\n")
         print(json.dumps({"endpoint": endpoint, "token": cfg.token, "pin": "", "bot": cfg.bot_name,
-                          "apps": list(cfg.apps)}, ensure_ascii=False))
+                          "apps": list(cfg.apps), "features": sorted(cfg.features)}, ensure_ascii=False))
         return 0
 
     store = _store(cfg)

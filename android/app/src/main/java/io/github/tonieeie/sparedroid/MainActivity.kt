@@ -87,6 +87,9 @@ class MainActivity : Activity() {
                 token.setText(tk)
                 pin.setText(json.optString("pin"))
                 if (json.optString("bot").isNotEmpty()) botName.setText(json.optString("bot"))
+                json.optJSONArray("features")?.let { a ->
+                    cfg.features = (0 until a.length()).map { a.getString(it) }.toSet()
+                }
                 json.optJSONArray("apps")?.let { a ->
                     val list = (0 until a.length()).map { a.getString(it) }.toSet()
                     if (list.isNotEmpty()) { cfg.apps = list; apps.setText(list.joinToString(",")) }
@@ -121,6 +124,18 @@ class MainActivity : Activity() {
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         })
         col.addView(dump)
+
+        col.addView(label("—— 功能开关（关掉的功能，服务器发来也不执行）——"))
+        val boxes = Features.ALL.associate { f ->
+            f.key to android.widget.CheckBox(this).apply {
+                text = "${f.label} —— ${f.hint}"
+                isChecked = f.key in cfg.features
+                setOnCheckedChangeListener { _, on ->
+                    cfg.features = if (on) cfg.features + f.key else cfg.features - f.key
+                }
+            }
+        }
+        boxes.values.forEach { col.addView(it) }
 
         col.addView(label("—— 第一次使用，依次打开下面三项 ——"))
         col.addView(button("① 打开通知使用权（找到「SpareDroid」并允许）") {

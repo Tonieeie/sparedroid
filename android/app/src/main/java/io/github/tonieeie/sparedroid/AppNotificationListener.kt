@@ -50,7 +50,7 @@ class AppNotificationListener : NotificationListenerService() {
         }
 
         val chat = ex.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString() ?: title
-        if (chat != null && n.contentIntent != null) ChatRegistry.put(chat, n.contentIntent)
+        if (chat != null && n.contentIntent != null) ChatRegistry.put(chat, n.contentIntent, n.actions?.toList() ?: emptyList())
 
         val payload = JSONObject().apply {
             put("key", sbn.key)
@@ -65,6 +65,8 @@ class AppNotificationListener : NotificationListenerService() {
             put("is_group", ex.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false))
             put("mentioned", mentioned)
             put("can_reply", n.contentIntent != null)
+            put("can_quick_reply", n.actions?.any { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true } == true)
+            n.actions?.let { acts -> put("actions", JSONArray(acts.map { it.title?.toString() ?: "" })) }
             ex.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.let { lines ->
                 put("text_lines", JSONArray(lines.map { it.toString() }))
             }

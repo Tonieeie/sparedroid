@@ -33,7 +33,12 @@ two hours late is worse than none.
 | `reply_quote` | `chat`, `quote_key`, `text` | Find the bubble whose normalised text equals `quote_key` (scroll up ≤ 5 pages), long-press → 引用, then send. Falls back to a plain send and reports `quoted: false` |
 | `share_file` | `chat`, `path`, `filename`, `caption` | Download `path`, share it to WeCom, pick the chat whose name matches exactly and uniquely, re-check the name in the confirm dialog, send |
 | `run` | `steps: [...]` | Generic steps in any allow-listed app, stopping at the first failure: `launch {package}`, `read`, `tap {text[, contains]}` or `tap {x, y}`, `input {text}`, `scroll {direction}`, `back`, `home`, `wait {ms}`. Result carries `screen` (from the last `read`), `package`, and `failed_step` on error |
+| `quick_reply` | `chat`, `text` | Fill the notification's own reply box and submit (no screen, no app). `send_text` with `prefer_quick: true` tries this first and falls back to the UI; result carries `method: quick_reply / ui` |
 | `dump` / `home` | – | Export the current screen / go to the home screen |
+
+More `run` steps (0.3.0): `long_press {text[, contains]}`, `swipe {x1, y1, x2, y2[, ms]}`, `wait_for {text[, contains, timeout_ms]}`, `screenshot [{max_width, quality}]` (Android 11+, result `screenshot: {format, width, height, data(base64)}`), `notify_action {chat, action}`.
+
+**Feature switches.** The phone refuses commands and steps whose feature is switched off with `feature_disabled` (see `Features.kt`); the heartbeat reports `features`, `battery_level`, `plugged`, `screen_on`, `keyguard_locked`, `sdk`.
 
 `send_text`, `reply_quote` and `share_file` accept optional `send_label` / `quote_label` (button texts,
 default 发送 / 引用) and `share_file` an optional `package`.

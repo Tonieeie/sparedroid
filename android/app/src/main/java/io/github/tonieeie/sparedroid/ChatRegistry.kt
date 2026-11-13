@@ -12,16 +12,25 @@ import android.app.PendingIntent
  * 只存在内存里：PendingIntent 不能落盘，进程重启后要等对方再发一条才能回。
  */
 object ChatRegistry {
-    data class Entry(val intent: PendingIntent, val seenAt: Long)
+    data class Entry(
+        val intent: PendingIntent,
+        val seenAt: Long,
+        /** 通知上带输入框的「回复」按钮（有的话）—— 快捷回复用。 */
+        val reply: android.app.Notification.Action? = null,
+        /** 通知上的全部按钮（标为已读、回复、接听……），按文字点。 */
+        val actions: List<android.app.Notification.Action> = emptyList(),
+    )
 
     private const val MAX = 300
     private val map = object : LinkedHashMap<String, Entry>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?) = size > MAX
     }
 
-    fun put(chat: String, intent: PendingIntent) = synchronized(map) {
-        map[chat] = Entry(intent, System.currentTimeMillis())
-    }
+    fun put(chat: String, intent: PendingIntent, actions: List<android.app.Notification.Action> = emptyList()) =
+        synchronized(map) {
+            val reply = actions.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true }
+            map[chat] = Entry(intent, System.currentTimeMillis(), reply, actions)
+        }
 
     fun get(chat: String): Entry? = synchronized(map) { map[chat] }
 

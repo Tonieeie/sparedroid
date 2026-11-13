@@ -18,6 +18,7 @@ from pathlib import Path
 
 from .bot import Bot
 from .config import Config
+from .features import FeatureDisabled
 from .store import Store
 
 INSTRUCTIONS = """\
@@ -46,6 +47,14 @@ class Phone:
 
     # -- plumbing ------------------------------------------------------------
 
+    def _call(self, fn, *args, **kw) -> dict:
+        try:
+            return self._sent(self.wait(fn(*args, **kw)))
+        except FeatureDisabled as exc:
+            return {"ok": False, "error": f"feature_disabled: {exc}"}
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
     def wait(self, command_id: str) -> dict:
         if not command_id:
             return {"ok": False, "error": "rate_limited",
@@ -67,12 +76,16 @@ class Phone:
     def steps(self, steps: list[dict]) -> dict:
         try:
             return self._screen(self.wait(self.bot.run(steps, tag="mcp", ttl_s=int(self.timeout_s) + 15)))
+        except FeatureDisabled as exc:
+            return {"ok": False, "error": "feature_disabled", "message": str(exc)}
         except ValueError as exc:  # app outside the allow-list
             return {"ok": False, "error": "not_allowed_app", "message": str(exc)}
 
     @staticmethod
     def _screen(result: dict) -> dict:
         out = {"ok": bool(result.get("ok")), "app": result.get("package") or "", "texts": result.get("texts") or []}
+        if result.get("screenshot"):
+            out["screenshot"] = result["screenshot"]
         if not out["ok"]:
             out["error"] = f"{result.get('error')}: {result.get('message')}"
             if result.get("failed_step") is not None:
@@ -106,6 +119,11 @@ class Phone:
             "phone_app_version": hb.get("app_version"),
             "allowed_apps": list(self.cfg.apps),
             "allowed_chats": sorted(self.cfg.chats),
+            "features": sorted(self.cfg.features),
+            "phone_features": hb.get("features"),
+            "battery_level": hb.get("battery_level"),
+            "plugged_in": hb.get("plugged"),
+            "screen_locked": hb.get("keyguard_locked"),
             "readonly": self.readonly,
         }
 
@@ -129,24 +147,33 @@ class Phone:
         """Do something, then read the screen so the caller sees the effect."""
         return self._guard() or self.steps([*steps, {"do": "wait", "ms": 700}, {"do": "read"}])
 
+    def screenshot(self, app: str = "") -> dict:
+        steps = ([{"do": "launch", "package": app}, {"do": "wait", "ms": 1200}] if app else [])
+        return self.steps(steps + [{"do": "screenshot"}, {"do": "read"}])
+
     def reply(self, message_id: str, text: str, quote: bool) -> dict:
         row = self.store.message(message_id)
         if row is None:
             return {"ok": False, "error": "unknown_message", "message": "No such message id; call recent_mentions."}
-        return self._chat_guard(row["chat"]) or self._sent(self.wait(self.bot.reply(row["id"], text, quote=quote)))
+        return self._chat_guard(row["chat"]) or self._call(self.bot.reply, row["id"], text, quote=quote)
 
     def send(self, chat: str, text: str) -> dict:
-        return self._chat_guard(chat) or self._sent(self.wait(self.bot.send(chat, text)))
+        return self._chat_guard(chat) or self._call(self.bot.send, chat, text)
 
     def send_file(self, chat: str, path: str, caption: str) -> dict:
         if not Path(path).is_file():
             return {"ok": False, "error": "no_such_file", "message": path}
-        return self._chat_guard(chat) or self._sent(self.wait(self.bot.send_file(chat, path, caption=caption)))
+        return self._chat_guard(chat) or self._call(self.bot.send_file, chat, path, caption=caption)
+
+    def send_image(self, chat: str, path: str, caption: str) -> dict:
+        if not Path(path).is_file():
+            return {"ok": False, "error": "no_such_file", "message": path}
+        return self._chat_guard(chat) or self._call(self.bot.send_image, chat, path, caption=caption)
 
     @staticmethod
     def _sent(result: dict) -> dict:
         if result.get("ok"):
-            return {"ok": True, **({"quoted": result["quoted"]} if "quoted" in result else {})}
+            return {"ok": True, **{k: result[k] for k in ("quoted", "method") if k in result}}
         return {"ok": False, "error": f"{result.get('error')}: {result.get('message')}"}
 
 
@@ -169,6 +196,20 @@ def build(phone: Phone):
         Returns {ok, app, texts}. Only allow-listed apps can be read.
         """
         return phone.read_screen(app)
+
+    @server.tool()
+    def screenshot(app: str = ""):
+        """Take a screenshot of the phone (Android 11+; needs the 'screenshot' feature on server and phone).
+
+        app: optional package name from allowed_apps to open first. Returns the image plus the screen text.
+        Only allow-listed apps are ever captured.
+        """
+        from mcp.server.mcpserver import Image
+
+        out = phone.screenshot(app)
+        if not out.get("ok") or not out.get("screenshot"):
+            return out
+        return [Image(path=out["screenshot"]), {"app": out["app"], "texts": out["texts"]}]
 
     @server.tool()
     def recent_notifications(limit: int = 20, app: str = "") -> list[dict]:
@@ -199,6 +240,29 @@ def build(phone: Phone):
         return phone.act({"do": "scroll", "direction": "up" if direction == "up" else "down"})
 
     @server.tool()
+    def long_press(text: str, contains: bool = False) -> dict:
+        """Long-press the control showing `text` (opens context menus). Returns the screen afterwards."""
+        return phone.act({"do": "long_press", "text": text, "contains": contains})
+
+    @server.tool()
+    def swipe(x1: int, y1: int, x2: int, y2: int, ms: int = 300) -> dict:
+        """Swipe from (x1, y1) to (x2, y2) in screen pixels over `ms` milliseconds. Returns the screen afterwards."""
+        return phone.act({"do": "swipe", "x1": x1, "y1": y1, "x2": x2, "y2": y2, "ms": ms})
+
+    @server.tool()
+    def wait_for_text(text: str, timeout_seconds: int = 8) -> dict:
+        """Wait until `text` appears on screen (e.g. after loading or sending). Returns the screen."""
+        return phone.steps([{"do": "wait_for", "text": text, "timeout_ms": timeout_seconds * 1000}, {"do": "read"}])
+
+    @server.tool()
+    def tap_notification_button(chat: str, button: str) -> dict:
+        """Press a button on the latest notification from `chat` (e.g. "Mark as read"), without opening the app.
+
+        recent_notifications lists the chats; the available buttons show up in the error if `button` is wrong.
+        """
+        return phone._guard() or phone.steps([{"do": "notify_action", "chat": chat, "action": button}])
+
+    @server.tool()
     def press_back() -> dict:
         """Press the Android back button. Returns the screen afterwards."""
         return phone.act({"do": "back"})
@@ -223,6 +287,14 @@ def build(phone: Phone):
         This sends a real message that other people will see.
         """
         return phone.send(chat, text)
+
+    @server.tool()
+    def send_image(chat: str, path: str, caption: str = "") -> dict:
+        """Send an image (png / jpg / gif / webp) from this machine to an allowed chat; it shows as a picture.
+
+        This sends a real message that other people will see.
+        """
+        return phone.send_image(chat, path, caption)
 
     @server.tool()
     def send_file(chat: str, path: str, caption: str = "") -> dict:

@@ -30,6 +30,7 @@ from typing import Callable
 
 from .api import Message, Notification, Reply, Screen
 from .config import Config
+from .features import STEP_FEATURE, FeatureDisabled, for_file
 from .store import Store
 from .text import find_trigger_message, norm, split_notification, strip_leading_mentions
 
@@ -146,6 +147,9 @@ class Bot:
         # Keep what was read (bounded) so `sparedroid mcp` and the CLI can return it to a caller.
         nodes = (p.get("screen") or p.get("screen_on_error") or {}).get("nodes") or []
         brief["texts"] = [n["text"][:400] for n in nodes if n.get("text")][:250]
+        shot = p.get("screenshot")
+        if isinstance(shot, dict) and shot.get("data"):
+            brief["screenshot"] = self._save_screenshot(str(p.get("command_id")), shot)
         cmd = self.store.finish(str(p.get("command_id")), ok, brief)
         if cmd is None:
             return
@@ -156,7 +160,8 @@ class Bot:
             self._hook("on_screen", Screen(
                 tag=cmd["context"].get("tag", ""), ok=ok, app=p.get("package") or "",
                 texts=[n["text"] for n in nodes if n.get("text")],
-                error="" if ok else f"{p.get('error')}: {p.get('message')}", raw=p))
+                error="" if ok else f"{p.get('error')}: {p.get('message')}", raw=brief,
+                screenshot=brief.get("screenshot", "")))
             return
         if ok and cmd["type"] == "snapshot":
             self._on_snapshot(cmd["args"]["chat"], p.get("screen") or {}, cmd["context"])
@@ -185,8 +190,11 @@ class Bot:
         if out is None:
             return
         reply = Reply(out) if isinstance(out, str) else out
-        self.reply(msg, reply.text, quote=reply.quote, mention_sender=reply.mention_sender,
-                   ttl_s=READ_TTL_S, purpose="reply")
+        try:
+            self.reply(msg, reply.text, quote=reply.quote, mention_sender=reply.mention_sender,
+                       ttl_s=READ_TTL_S, purpose="reply")
+        except FeatureDisabled as exc:
+            log.warning("not replying in %r: %s", chat, exc)
 
     def heartbeat(self, hb: dict) -> None:
         with self.lock:
@@ -203,6 +211,25 @@ class Bot:
                 self.store.set_meta("phone_health", now)
                 self.alert(f"**SpareDroid**: on the phone, the {now} stopped. Open the app on the phone to fix it."
                            if now else "**SpareDroid**: the phone's services are healthy again.")
+            if "battery_alerts" in self.cfg.features:
+                self._battery(hb)
+
+    def _battery(self, hb: dict) -> None:
+        """Alert once per change: unplugged / plugged back in, and low battery while unplugged."""
+        if "plugged" not in hb:
+            return
+        level = hb.get("battery_level")
+        state = "plugged" if hb["plugged"] else ("low" if isinstance(level, int) and level <= 20 else "unplugged")
+        before = self.store.get_meta("battery_state")
+        if state == before:
+            return
+        self.store.set_meta("battery_state", state)
+        if state == "unplugged" and before is not None:
+            self.alert(f"**SpareDroid**: the phone was unplugged (battery {level}%). It needs to stay on power.")
+        elif state == "low":
+            self.alert(f"**SpareDroid**: the phone's battery is at {level}% and it is not charging.")
+        elif state == "plugged" and before in ("unplugged", "low"):
+            self.alert("**SpareDroid**: the phone is charging again.")
 
     # --------------------------------------------------------- server -> phone
 
@@ -217,6 +244,7 @@ class Bot:
             m = msg if isinstance(msg, Message) else self._message(msg)
             if m is None:
                 raise KeyError(f"unknown message: {msg}")
+            self._need("quote" if quote else "reply")
             mention = self.cfg.mention_sender if mention_sender is None else mention_sender
             if mention and m.sender:
                 text = f"@{m.sender} {text}"  # plain text, not a real @, but readers see who is answered
@@ -228,12 +256,21 @@ class Bot:
                                                          **self._labels()},
                                          ttl_s=ttl_s, context={"purpose": purpose, "message": m.id})
             else:
-                cmd = self.store.enqueue("send_text", {"chat": m.chat, "text": text, **self._labels()},
+                cmd = self.store.enqueue("send_text", {"chat": m.chat, "text": text, **self._labels(),
+                                                       **self._quick()},
                                          ttl_s=ttl_s, context={"purpose": purpose, "message": m.id})
             return cmd["id"]
 
     def _labels(self) -> dict:
         return {"send_label": self.cfg.send_label, "quote_label": self.cfg.quote_label}
+
+    def _quick(self) -> dict:
+        """Ask the phone to try the notification's reply button first (no screen, no app switch)."""
+        return {"prefer_quick": True} if "quick_reply" in self.cfg.features else {}
+
+    def _need(self, feature: str) -> None:
+        if feature not in self.cfg.features:
+            raise FeatureDisabled(feature)
 
     def run(self, steps: list[dict], *, tag: str = "", ttl_s: int = 300) -> str:
         """Queue generic UI steps for any allow-listed app. The outcome arrives in ``on_screen``.
@@ -243,6 +280,8 @@ class Bot:
         ``{"do": "back"}``, ``{"do": "home"}``, ``{"do": "wait", "ms": 800}``.
         """
         for s in steps:
+            if s.get("do") in STEP_FEATURE:
+                self._need(STEP_FEATURE[s["do"]])
             if s.get("do") == "launch" and s.get("package") not in self.cfg.apps:
                 raise ValueError(f"{s.get('package')} is not in SPAREDROID_APPS")
         with self.lock:
@@ -250,16 +289,19 @@ class Bot:
                                       context={"purpose": "run", "tag": tag})["id"]
 
     def send(self, chat: str, text: str, *, ttl_s: int = REPLY_TTL_S) -> str:
+        self._need("reply")
         with self.lock:
             if not self._allow(chat):
                 return ""
-            return self.store.enqueue("send_text", {"chat": chat, "text": text, **self._labels()}, ttl_s=ttl_s,
+            return self.store.enqueue("send_text", {"chat": chat, "text": text, **self._labels(), **self._quick()},
+                                      ttl_s=ttl_s,
                                       context={"purpose": "send"})["id"]
 
     def send_file(self, chat: str, path: Path | str, *, caption: str = "", filename: str = "",
                   ttl_s: int = FILE_TTL_S) -> str:
         """Copy the file into the data dir now (so later edits/deletes don't matter) and queue it."""
         src = Path(path)
+        self._need(for_file(filename or src.name))
         data = src.read_bytes()
         cid = uuid.uuid4().hex
         files = self.cfg.data_dir / "files"
@@ -274,6 +316,25 @@ class Bot:
                                context={"purpose": "file", "file": str(dest.resolve()),
                                         "sha256": hashlib.sha256(data).hexdigest()})
         return cid
+
+    def send_image(self, chat: str, path: Path | str, *, caption: str = "", ttl_s: int = FILE_TTL_S) -> str:
+        """Same share-sheet flow as send_file; an image file name makes the chat show it as a picture."""
+        src = Path(path)
+        if src.suffix.lower() not in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
+            raise ValueError(f"not an image file name: {src.name}")
+        return self.send_file(chat, src, caption=caption, ttl_s=ttl_s)
+
+    def _save_screenshot(self, command_id: str, shot: dict) -> str:
+        """Screenshots may show private content: keep only the newest 50."""
+        import base64
+
+        d = self.cfg.data_dir / "screenshots"
+        d.mkdir(parents=True, exist_ok=True)
+        path = d / f"{time.strftime('%Y%m%d-%H%M%S')}-{command_id[:8]}.jpg"
+        path.write_bytes(base64.b64decode(shot["data"]))
+        for old in sorted(d.glob("*.jpg"))[:-50]:
+            old.unlink(missing_ok=True)
+        return str(path.resolve())
 
     def file(self, command_id: str) -> bytes | None:
         """Bytes for a share_file command the phone has fetched and that has not expired."""

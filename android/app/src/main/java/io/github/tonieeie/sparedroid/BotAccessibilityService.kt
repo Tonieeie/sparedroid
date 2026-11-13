@@ -550,6 +550,84 @@ class BotAccessibilityService : AccessibilityService() {
     /** 当前前台应用的包名（给结果里带上，方便服务器确认读的是谁）。 */
     fun foregroundPackage(): String? = rootInActiveWindow?.packageName?.toString()
 
+    // ---------- 第一批新增：长按、滑动、等文字、截图、通知按钮、快捷回复 ----------
+
+    fun longPressText(label: String, contains: Boolean) {
+        val node = waitFor(3_000) {
+            findInAllWindows { n ->
+                val t = (n.text ?: n.contentDescription)?.toString()?.trim() ?: return@findInAllWindows false
+                if (contains) t.contains(label) else t == label
+            }
+        } ?: throw CmdError("not_found", "屏幕上没找到「$label」")
+        if (!longClick(node)) throw CmdError("click_failed", "长按「$label」失败")
+    }
+
+    /** 从 (x1,y1) 滑到 (x2,y2)，用 [ms] 毫秒。前台必须是受控应用。 */
+    fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, ms: Long) {
+        appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用")
+        val path = android.graphics.Path().apply { moveTo(x1.toFloat(), y1.toFloat()); lineTo(x2.toFloat(), y2.toFloat()) }
+        val gesture = android.accessibilityservice.GestureDescription.Builder()
+            .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, ms.coerceIn(50, 3_000))).build()
+        if (!dispatchGesture(gesture, null, null)) throw CmdError("gesture_failed", "滑动失败")
+        Thread.sleep(ms.coerceIn(50, 3_000) + 200)
+    }
+
+    /** 等某段文字出现在受控应用的屏幕上（页面加载、消息发出后常用）。 */
+    fun waitForText(label: String, contains: Boolean, timeoutMs: Long) {
+        waitFor(timeoutMs.coerceIn(100, 30_000)) {
+            findInAllWindows { n ->
+                val t = (n.text ?: n.contentDescription)?.toString()?.trim() ?: return@findInAllWindows false
+                if (contains) t.contains(label) else t == label
+            }
+        } ?: throw CmdError("not_found", "等了 ${timeoutMs / 1000} 秒，屏幕上没出现「$label」")
+    }
+
+    /**
+     * 截图（Android 11+）。只在前台是受控应用时才截 —— 防止把别的应用（银行、私聊）的画面传出去。
+     * 返回 JPEG 的 base64，宽度缩到 [maxWidth] 以内，控制传输大小。
+     */
+    fun screenshot(maxWidth: Int = 1080, quality: Int = 70): JSONObject {
+        if (Build.VERSION.SDK_INT < 30) throw CmdError("unsupported", "截图需要 Android 11 及以上")
+        appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用，不截图")
+        val done = java.util.concurrent.CountDownLatch(1)
+        var bitmap: android.graphics.Bitmap? = null
+        var failure = 0
+        takeScreenshot(android.view.Display.DEFAULT_DISPLAY, mainExecutor,
+            object : TakeScreenshotCallback {
+                override fun onSuccess(r: ScreenshotResult) {
+                    bitmap = android.graphics.Bitmap.wrapHardwareBuffer(r.hardwareBuffer, r.colorSpace)
+                        ?.copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                    r.hardwareBuffer.close()
+                    done.countDown()
+                }
+                override fun onFailure(code: Int) { failure = code; done.countDown() }
+            })
+        done.await(5, java.util.concurrent.TimeUnit.SECONDS)
+        val bmp = bitmap ?: throw CmdError("screenshot_failed", "截图失败（系统返回 $failure；两次截图至少间隔 1 秒）")
+        val scaled = if (bmp.width > maxWidth)
+            android.graphics.Bitmap.createScaledBitmap(bmp, maxWidth, bmp.height * maxWidth / bmp.width, true) else bmp
+        val out = java.io.ByteArrayOutputStream()
+        scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality.coerceIn(30, 95), out)
+        return JSONObject().apply {
+            put("format", "jpeg")
+            put("width", scaled.width)
+            put("height", scaled.height)
+            put("data", android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP))
+        }
+    }
+
+    /** 点某个会话最近一条通知上的按钮（按文字，如「标为已读」）。不用开屏。 */
+    fun notificationAction(chat: String, label: String) {
+        val entry = ChatRegistry.get(chat) ?: throw CmdError("no_route", "最近没有收到「$chat」的通知")
+        val action = entry.actions.firstOrNull { it.title?.toString()?.trim() == label }
+            ?: throw CmdError("not_found", "「$chat」的通知上没有「$label」按钮（有：${entry.actions.joinToString { it.title.toString() }}）")
+        try {
+            action.actionIntent.send()
+        } catch (e: PendingIntent.CanceledException) {
+            throw CmdError("intent_canceled", "那条通知已失效")
+        }
+    }
+
     // ---------- 界面识别小工具 ----------
 
     /** 前台窗口，前提是它属于受控应用；否则 null —— 没列出的应用一律不读不点。 */

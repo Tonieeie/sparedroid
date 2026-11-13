@@ -74,6 +74,9 @@ class Screen:
     error: str = ""
     raw: dict | None = None
 
+    screenshot: str = ""
+    """Path of the JPEG from a ``{"do": "screenshot"}`` step, if there was one."""
+
 
 @dataclass(frozen=True)
 class Reply:
@@ -100,6 +103,9 @@ class Actions(Protocol):
 
         The outcome arrives later in your ``on_screen(screen, bot)`` hook.
         """
+
+    def send_image(self, chat: str, path: Path | str, *, caption: str = "") -> str:
+        """Share an image into a chat (shows as a picture, not a file attachment)."""
 
     def alert(self, text: str) -> None:
         """Tell your team (SPAREDROID_ALERT_WEBHOOK), e.g. "this customer needs a human"."""

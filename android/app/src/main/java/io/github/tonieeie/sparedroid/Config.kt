@@ -41,6 +41,11 @@ class Config(ctx: Context) {
             .map { it.trim() }.filter { it.isNotEmpty() }.toSet().ifEmpty { setOf(WEWORK_PACKAGE) }
         set(v) = sp.edit().putString("apps", v.joinToString(",")).apply()
 
+    /** 打开的功能，见 [Features]。 */
+    var features: Set<String>
+        get() = sp.getStringSet("features", null)?.toSet() ?: Features.DEFAULTS
+        set(v) = sp.edit().putStringSet("features", v.filter { k -> Features.ALL.any { it.key == k } }.toSet()).apply()
+
     /** 侦察模式：企业微信每换一个界面就把整棵控件树传上去，用于摸清新版界面结构。 */
     var dumpMode: Boolean
         get() = sp.getBoolean("dump_mode", false)

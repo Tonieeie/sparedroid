@@ -69,9 +69,16 @@ claude mcp add sparedroid -- ssh you@your-server "SPAREDROID_HOME=/opt/sparedroi
 | `tap(text, contains?)` | 点文字为 `text` 的控件，返回点完后的屏幕 | **是** |
 | `type_text(text)` | 往输入框填字 | **是** |
 | `scroll(direction)` / `press_back` / `go_home` | 滚动 / 返回 / 回桌面 | 界面 |
+| `screenshot(app?)` | 截图并把图片直接给 AI 看（需打开 `screenshot` 功能，Android 11+） | 只会打开应用 |
+| `long_press(text)` / `swipe(x1,y1,x2,y2)` | 长按 / 滑动 | **是** |
+| `wait_for_text(text, timeout_seconds)` | 等某段文字出现 | 否 |
+| `tap_notification_button(chat, button)` | 点某个会话最新通知上的按钮（如「标为已读」），不用开屏 | **是** |
 | `reply_to_message(message_id, text, quote)` | 回复某条 @ 消息（默认引用） | **发出真实消息** |
 | `send_message(chat, text)` | 往某个会话发一句话 | **发出真实消息** |
 | `send_file(chat, path, caption)` | 把本机的文件发到某个会话 | **发出真实消息** |
+| `send_image(chat, path, caption)` | 把本机的图片发到某个会话 | **发出真实消息** |
+
+关掉的功能（`SPAREDROID_FEATURES` 或手机设置页）对应的工具会直接返回 `feature_disabled`。
 
 每次调用要几秒（手机每 3 秒来取一次指令）。
 

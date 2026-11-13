@@ -53,9 +53,27 @@ object CommandRunner {
             "back" -> svc.back()
             "home" -> svc.goHome()
             "wait" -> Thread.sleep(s.optLong("ms", 500).coerceIn(0, 10_000))
+            "long_press" -> svc.longPressText(s.getString("text"), s.optBoolean("contains", false))
+            "swipe" -> svc.swipe(s.getInt("x1"), s.getInt("y1"), s.getInt("x2"), s.getInt("y2"), s.optLong("ms", 300))
+            "wait_for" -> svc.waitForText(s.getString("text"), s.optBoolean("contains", true), s.optLong("timeout_ms", 8_000))
+            "screenshot" -> result.put("screenshot", svc.screenshot(s.optInt("max_width", 1080), s.optInt("quality", 70)))
+            "notify_action" -> svc.notificationAction(s.getString("chat"), s.getString("action"))
             else -> throw CmdError("unknown_step", "不认识的动作：$what")
         }
         Thread.sleep(250) // 让界面跟上
+    }
+
+    /** 往通知的回复框里填字并提交 —— 跟在通知栏里直接回复一样。发出后系统不给回执，只能报"已提交"。 */
+    private fun quickReply(ctx: Context, action: android.app.Notification.Action, text: String) {
+        val inputs = action.remoteInputs ?: throw CmdError("no_quick_reply", "通知的回复按钮没有输入框")
+        val intent = android.content.Intent()
+        val bundle = android.os.Bundle().apply { inputs.forEach { putCharSequence(it.resultKey, text) } }
+        android.app.RemoteInput.addResultsToIntent(inputs, intent, bundle)
+        try {
+            action.actionIntent.send(ctx, 0, intent)
+        } catch (e: android.app.PendingIntent.CanceledException) {
+            throw CmdError("intent_canceled", "那条通知已失效，回复按钮不能用了")
+        }
     }
 
     /** 群里显示的文件名来自服务器；去掉路径符号和控制字符，防止写到共享目录外面。 */
@@ -87,10 +105,28 @@ object CommandRunner {
             if (expiresAt > 0 && System.currentTimeMillis() > expiresAt) {
                 throw CmdError("expired", "指令已过期，未执行")
             }
-            if (svc == null) throw CmdError("a11y_off", "无障碍服务没开，无法操作企业微信")
+            val cfg = Config(ctx)
+            Features.require(cfg, Features.forCommand(type, args))
+
+            // 通知快捷回复：用通知上的「回复」按钮直接发，不开屏、不开应用、不需要无障碍。
+            // 服务器默认先试它（prefer_quick），通知上没有回复按钮再退回界面操作。
+            if (type == "quick_reply" || (type == "send_text" && args.optBoolean("prefer_quick") && "quick_reply" in cfg.features)) {
+                val chat = args.getString("chat")
+                val text = args.getString("text")
+                if (text.isBlank()) throw CmdError("empty_text", "要发送的内容为空")
+                val entry = ChatRegistry.get(chat)
+                if (entry?.reply != null) {
+                    quickReply(ctx, entry.reply, text)
+                    result.put("chat", chat).put("method", "quick_reply").put("ok", true)
+                    return
+                }
+                if (type == "quick_reply") throw CmdError("no_quick_reply", "「$chat」最近的通知上没有回复按钮")
+            }
+
+            if (svc == null) throw CmdError("a11y_off", "无障碍服务没开，无法操作手机界面")
 
             // 要动界面的指令：先确保屏幕亮着（黑屏时读得到界面、但填不了字）
-            if (type in setOf("send_text", "reply_quote", "share_file", "snapshot", "run")) {
+            if (type in setOf("send_text", "reply_quote", "share_file", "snapshot", "run") && "wake_screen" in cfg.features) {
                 result.put("woke_screen", svc.wakeScreen())
             }
 
@@ -103,7 +139,7 @@ object CommandRunner {
                     touchedUi = true
                     svc.openChat(chat)
                     svc.sendText(text, args.optString("send_label", "发送"))
-                    result.put("chat", chat)
+                    result.put("chat", chat).put("method", "ui")
                 }
                 "reply_quote" -> {
                     // 引用原消息回复；找不到原消息时（默认）退回普通发送（回复内容应自带足够上下文，不引用也看得懂）
@@ -157,6 +193,7 @@ object CommandRunner {
                     for (i in 0 until steps.length()) {
                         val s = steps.getJSONObject(i)
                         try {
+                            Features.require(cfg, Features.forStep(s.optString("do")))
                             step(svc, s, result)
                         } catch (e: CmdError) {
                             result.put("failed_step", i)

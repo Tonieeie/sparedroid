@@ -30,6 +30,12 @@ def _names(raw: str) -> frozenset[str]:
     return frozenset(n.strip() for n in raw.split("|") if n.strip())
 
 
+def _features(raw: str) -> frozenset[str]:
+    from .features import parse
+
+    return parse(raw)
+
+
 def _int(name: str, default: int) -> int:
     raw = os.environ.get(name, "").strip()
     return int(raw) if raw.isdigit() else default
@@ -68,6 +74,9 @@ class Config:
     alert_webhook: str = ""
     """Optional WeCom *internal* group robot webhook for alerts (phone offline, send failed...)."""
 
+    features: frozenset[str] = field(default_factory=lambda: _features("default"))
+    """What the bot may do. See sparedroid.features; set with SPAREDROID_FEATURES."""
+
     mention_sender: bool = True
     """Prefix replies with ``@sender`` (plain text, so readers know who is being answered)."""
 
@@ -95,6 +104,7 @@ class Config:
             public_url=e("SPAREDROID_PUBLIC_URL", "").rstrip("/"),
             data_dir=Path(e("SPAREDROID_DATA_DIR", "data")),
             alert_webhook=e("SPAREDROID_ALERT_WEBHOOK", ""),
+            features=_features(e("SPAREDROID_FEATURES", "default")),
             mention_sender=e("SPAREDROID_MENTION_SENDER", "true").lower() not in ("0", "false", "no"),
             per_chat_per_minute=_int("SPAREDROID_PER_CHAT_PER_MINUTE", 6),
             global_per_minute=_int("SPAREDROID_GLOBAL_PER_MINUTE", 20),

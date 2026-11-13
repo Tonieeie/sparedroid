@@ -10,7 +10,7 @@ SpareDroid 让一台闲置安卓手机替你盯着这些应用：**听它的通�
 
 第一个、也是打磨得最完整的用例：**企业微信外部群里的 AI 客服 / 接单机器人**。
 
-[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [写你自己的逻辑](#写你自己的逻辑) · [接入 AI 助手（MCP）](docs/mcp.md) · [Claude Code Skill](#让-claude-code-带你配置skill) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
+[English](README.en.md) · [需要准备什么](#你需要准备什么) · [安装](#安装) · [功能开关](#功能开关) · [写你自己的逻辑](#写你自己的逻辑) · [接入 AI 助手（MCP）](docs/mcp.md) · [Claude Code Skill](#让-claude-code-带你配置skill) · [用例画廊](#用例画廊) · [常见问题](docs/faq.md)
 
 ![CI](https://github.com/Tonieeie/sparedroid/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -101,6 +101,7 @@ App 不申请定位、通讯录、短信、相机、麦克风、存储权限。
 | 任意应用的通知转发 | ⚠️ 代码与测试完成，真机上只验证过企业微信的通知 |
 | 任意应用的 `bot.run` 通用动作（打开 / 读屏 / 点击 / 输入 / 滚动） | ⚠️ 0.2.0 新增，通过编译和单元测试，**尚未真机验证** |
 | MCP 服务（`sparedroid mcp`） | ✅ 端到端测试（真实 MCP 客户端 + 模拟手机）；依赖的通用动作同上，未真机验证 |
+| 0.3.0 新功能：截图、通知快捷回复、发图片、长按 / 滑动 / 等文字、电量上报 | ⚠️ 通过编译和单元测试，**尚未真机验证**；快捷回复取决于应用的通知有没有「回复」按钮 |
 | 其它聊天应用的发消息 / 引用 | ⚠️ 需要设置按钮文字（`SPAREDROID_SEND_LABEL` 等），未验证 |
 
 欢迎用 [兼容性反馈](https://github.com/Tonieeie/sparedroid/issues/new/choose) 告诉我们你的机型和应用。
@@ -152,6 +153,32 @@ docker compose exec sparedroid sparedroid config    # 打印一行配置，手�
 在测试群里发 `@机器人 你好`，几秒后它回 `@你 收到：你好`。
 服务器上 `sparedroid status` 能看到手机心跳，`sparedroid messages` 能看到收到的消息。
 
+## 功能开关
+
+每项功能都可以单独打开或关闭，**手机设置页和服务器 `SPAREDROID_FEATURES` 两边都开着才生效**：
+服务器不会发出关掉的指令，手机收到关掉的指令也会拒绝（`feature_disabled`）。
+
+| 功能 | 开关名 | 默认 | 说明 |
+|---|---|---|---|
+| 回复文字 | `reply` | 开 | 在会话里发文字 |
+| 引用回复 | `quote` | 开 | 长按原消息 → 引用后回复 |
+| 通知快捷回复 | `quick_reply` | 开 | 通知上有「回复」按钮时直接用它回，**不用亮屏、不用打开应用**；没有就自动改走界面操作 |
+| 发文件 | `files` | 开 | 「分享 → 选会话」，几天后也能发 |
+| 发图片 | `images` | 开 | 同上，在聊天里显示为图片 |
+| 读屏 | `read` | 开 | 读出受控应用屏幕上的文字；等某段文字出现 |
+| 操作应用 | `control` | 开 | 打开应用、点击、输入、滚动、长按、滑动、点通知上的按钮 |
+| 截图 | `screenshot` | **关** | 截受控应用的画面传给服务器（Android 11+）。画面里可能有隐私，需要时再开 |
+| 自动亮屏 | `wake_screen` | 开 | 动界面前点亮屏幕，做完让它按系统设置自己熄灭（锁屏方式要设为「无」） |
+| 电量告警 | `battery_alerts` | 开 | 手机拔了电源、电量低于 20% 时通知你（仅服务器） |
+
+```bash
+SPAREDROID_FEATURES=default                      # 上表的默认值
+SPAREDROID_FEATURES=default,screenshot,-quote    # 在默认基础上加截图、去掉引用
+SPAREDROID_FEATURES=read,reply                   # 只要这两项
+```
+
+手机上在 App 设置页的「功能开关」里勾选；从服务器导入配置时会一并带过去。
+
 ## 写你自己的逻辑
 
 在一个 Python 文件里写下面任意几个函数，把 `SPAREDROID_HANDLER` 指向它（如 `my_handler:handle`）。
@@ -169,6 +196,7 @@ docker compose exec sparedroid sparedroid config    # 打印一行配置，手�
 | `bot.reply(msg_id, text, quote=True)` | 以后再回某条消息（比如订单处理完） |
 | `bot.send(chat, text)` | 往某个会话发一句话 |
 | `bot.send_file(chat, path, caption=...)` | 把文件发到某个会话 |
+| `bot.send_image(chat, path, caption=...)` | 把图片发到某个会话（显示为图片） |
 | `bot.run(steps, tag=...)` | 在任意受控应用里执行一串通用动作（见下表） |
 | `bot.alert(text)` | 通知你的团队 |
 
@@ -182,6 +210,11 @@ docker compose exec sparedroid sparedroid config    # 打印一行配置，手�
 | `{"do": "input", "text": "..."}` | 往输入框填字 |
 | `{"do": "scroll", "direction": "down"}` | 滚动 |
 | `{"do": "back"}` / `{"do": "home"}` / `{"do": "wait", "ms": 800}` | 返回 / 回桌面 / 等一下 |
+| `{"do": "long_press", "text": "..."}` | 长按（打开菜单） |
+| `{"do": "swipe", "x1": .., "y1": .., "x2": .., "y2": .., "ms": 300}` | 滑动 |
+| `{"do": "wait_for", "text": "已发送", "timeout_ms": 8000}` | 等某段文字出现 |
+| `{"do": "screenshot"}` | 截图（需打开 `screenshot`），结果在 `screen.screenshot`（本地 JPEG 路径） |
+| `{"do": "notify_action", "chat": "...", "action": "标为已读"}` | 点某个会话最新通知上的按钮，不用开屏 |
 
 ```python
 # 例：每 10 分钟打开店铺应用，读「今日订单」

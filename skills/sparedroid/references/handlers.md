@@ -12,6 +12,13 @@
 
 Exceptions are caught, logged and sent to the alert webhook; they don't stop the server.
 
+## Feature switches
+
+Each capability is a switch (`SPAREDROID_FEATURES` on the server, checkboxes on the phone; both must be on):
+reply, quote, quick_reply, files, images, read, control, screenshot (off by default), wake_screen,
+battery_alerts. Calling a switched-off one raises `sparedroid.features.FeatureDisabled`.
+Plain replies try the notification's own reply button first when `quick_reply` is on (no screen needed).
+
 ## Inputs
 
 ```python
@@ -34,6 +41,7 @@ screen.tag, screen.ok, screen.app, screen.texts, screen.error
 bot.reply(msg_or_id, "text", quote=True)        # now or days later; quote attaches it to the original
 bot.send(chat, "text")                          # chat must have messaged the bot since the app started
 bot.send_file(chat, "/path/file.pdf", caption="...")   # works any time (share sheet), copies the file first
+bot.send_image(chat, "/path/pic.png", caption="...")   # same, shown as a picture
 bot.run(steps, tag="x")                         # generic UI steps in any allow-listed app -> on_screen
 bot.alert("text")                               # internal alert webhook
 ```
@@ -48,6 +56,11 @@ bot.alert("text")                               # internal alert webhook
 {"do": "input", "text": "..."}
 {"do": "scroll", "direction": "down"}            # or "up"
 {"do": "back"} / {"do": "home"} / {"do": "wait", "ms": 800}
+{"do": "long_press", "text": "..."}
+{"do": "swipe", "x1": 500, "y1": 1500, "x2": 500, "y2": 500, "ms": 300}
+{"do": "wait_for", "text": "已发送", "timeout_ms": 8000}
+{"do": "screenshot"}                         # needs the screenshot feature; path in screen.screenshot
+{"do": "notify_action", "chat": "群", "action": "标为已读"}
 ```
 
 End multi-step runs with `{"do": "home"}`: while the phone sits inside a chat, that chat's new messages don't

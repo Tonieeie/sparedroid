@@ -31,6 +31,10 @@ Check in this order — each step depends on the previous one:
 | `send_unconfirmed` | tapped send, input box didn't clear | check the chat by hand; **not** retried automatically to avoid double sends |
 | `no_quote_menu` / `quoted: false` | quote failed; a plain reply was sent instead | normal fallback; set `SPAREDROID_QUOTE_LABEL` for other apps |
 | `picker_not_shown` / `chat_not_found` / `chat_ambiguous` | file sharing couldn't pick exactly one chat by name | chat names must be unique and unchanged |
+| `feature_disabled` | switched off on the server (`SPAREDROID_FEATURES`) or on the phone (settings → 功能开关) | turn it on in both places |
+| `screen_locked` | phone sits on a lock screen | set screen lock to "none" |
+| `no_quick_reply` | the chat's notification has no reply button | normal; plain replies fall back to the UI automatically |
+| `unsupported` (screenshot) | Android 10 or older | screenshots need Android 11+ |
 | `not_found` (run step) | no control with that text | `read` first and use the exact text |
 | `timeout` (MCP) | no result within the wait | phone offline, locked or busy; read the screen before retrying |
 
