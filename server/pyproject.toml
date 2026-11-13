@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wecomdroid"
-version = "0.1.0"
-description = "Turn a spare Android phone into a WeCom (企业微信) group bot that works in external groups."
+version = "0.2.0"
+description = "Turn a spare Android phone into an API for apps that have none: listen to notifications, read screens, act. First use case: WeCom (企业微信) external-group bots."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

@@ -1,6 +1,6 @@
 """WeComDroid server: turn a spare Android phone into a WeCom group bot."""
 
-from .api import Actions, Message, Reply
+from .api import Actions, Message, Notification, Reply, Screen
 
-__all__ = ["Actions", "Message", "Reply"]
-__version__ = "0.1.0"
+__all__ = ["Actions", "Message", "Notification", "Reply", "Screen"]
+__version__ = "0.2.0"

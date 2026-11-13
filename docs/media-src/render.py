@@ -4,7 +4,7 @@
     python docs/media-src/render.py                 # everything
     python docs/media-src/render.py --preview ai 5000   # one PNG frame, for tweaking
 
-Outputs into docs/media/: hero.png, demo-ai.gif, demo-order.gif.
+Outputs into docs/media/: hero.png, demo-ai.gif, demo-order.gif, demo-any.gif.
 Frames are rendered by calling render(ms) in the page, so timing is exact and
 repeatable. Identical consecutive frames are merged (longer duration) to keep GIFs small.
 """
@@ -93,7 +93,7 @@ def main() -> int:
         hero.wait_for_function("typeof render === 'function'")
         hero.screenshot(path=str(OUT / "hero.png"))
         print("hero.png")
-        for scene in ("ai", "order"):
+        for scene in ("ai", "order", "any"):
             make_gif(page, scene)
         browser.close()
     return 0

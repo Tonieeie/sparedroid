@@ -18,7 +18,7 @@ import org.json.JSONObject
  * 这里不判断"这条消息该怎么回"，只做一件事：把通知里能拿到的字段全部原样带上，
  * 由服务器解析。企业微信改通知格式时，只改服务器的 Python，不用重装 App。
  */
-class WeComNotificationListener : NotificationListenerService() {
+class AppNotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         Status.listenerConnected = true
@@ -31,7 +31,6 @@ class WeComNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName != WEWORK_PACKAGE) return
         val n = sbn.notification ?: return
         // 分组摘要通知（"3 个会话的 10 条消息"）没有具体内容，跳过。
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
@@ -43,6 +42,7 @@ class WeComNotificationListener : NotificationListenerService() {
         val ticker = n.tickerText?.toString()
 
         val cfg = Config(this)
+        if (sbn.packageName !in cfg.apps) return
         val haystack = listOfNotNull(title, text, bigText, ticker)
         val mentioned = haystack.any { s ->
             s.contains("[有人@我]") || s.contains("@我") ||
@@ -54,6 +54,7 @@ class WeComNotificationListener : NotificationListenerService() {
 
         val payload = JSONObject().apply {
             put("key", sbn.key)
+            put("package", sbn.packageName)
             put("post_time", sbn.postTime)
             put("chat", chat)
             put("title", title)

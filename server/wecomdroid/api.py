@@ -33,6 +33,47 @@ class Message:
     mention_first: bool
     """True when the message *starts* with @bot (vs. mentioning it mid-sentence)."""
 
+    app: str = "com.tencent.wework"
+    """Android package the message came from."""
+
+
+@dataclass(frozen=True)
+class Notification:
+    """Any notification from an allow-listed app, as the phone saw it. See ``on_notification``."""
+
+    app: str
+    """Android package name, e.g. ``com.tencent.wework``."""
+
+    title: str
+    text: str
+    chat: str
+    """Conversation title when the app provides one, else the notification title."""
+
+    mentioned: bool
+    posted_at: float
+    """Unix seconds."""
+
+    raw: dict
+    """Everything the phone sent (big_text, text_lines, messages, ...)."""
+
+
+@dataclass(frozen=True)
+class Screen:
+    """Result of a ``bot.run([...])`` you queued earlier. See ``on_screen``."""
+
+    tag: str
+    """Whatever you passed as ``tag=`` to ``bot.run``."""
+
+    ok: bool
+    app: str
+    """Package in the foreground when the steps finished."""
+
+    texts: list[str]
+    """All visible text from the last ``read`` step, top to bottom."""
+
+    error: str = ""
+    raw: dict | None = None
+
 
 @dataclass(frozen=True)
 class Reply:
@@ -53,6 +94,12 @@ class Actions(Protocol):
 
     def send_file(self, chat: str, path: Path | str, *, caption: str = "", filename: str = "") -> str:
         """Share a file into any chat by name (works days later; uses WeCom's share sheet)."""
+
+    def run(self, steps: list[dict], *, tag: str = "") -> str:
+        """Drive any allow-listed app: launch / read / tap / input / scroll / back / home / wait.
+
+        The outcome arrives later in your ``on_screen(screen, bot)`` hook.
+        """
 
     def alert(self, text: str) -> None:
         """Tell your team (WECOMDROID_ALERT_WEBHOOK), e.g. "this customer needs a human"."""

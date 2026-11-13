@@ -59,6 +59,23 @@
     box-shadow: 0 8px 20px -6px rgba(15,23,42,.5);
   }
 
+  .apphead { height: 50px; display: flex; align-items: center; padding: 0 16px; gap: 8px; background: #4f46e5; color: #fff; font-weight: 700; font-size: 15px; }
+  .appbody { flex: 1; background: #f1f5f9; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .card2 { position: relative; background: #fff; border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .card2 .lab { font-size: 12px; color: var(--muted); }
+  .card2 .val { font-size: 30px; font-weight: 800; margin-top: 2px; letter-spacing: -.5px; }
+  .card2 .val small { font-size: 13px; font-weight: 600; color: var(--ok); margin-left: 6px; }
+  .rowlist { background: #fff; border-radius: 14px; padding: 6px 16px; font-size: 13px; }
+  .rowlist div { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f1f5f9; }
+  .rowlist div:last-child { border: 0; } .rowlist span { color: var(--muted); }
+  .scan { position: absolute; inset: -4px; border: 2.5px solid #22c55e; border-radius: 16px; box-shadow: 0 0 0 4px rgba(34,197,94,.18); }
+  .banner { position: absolute; left: 10px; right: 10px; top: 40px; background: rgba(255,255,255,.97); border-radius: 16px; padding: 11px 13px; display: flex; gap: 10px; align-items: center;
+            box-shadow: 0 14px 30px -10px rgba(15,23,42,.45); font-size: 12.5px; line-height: 1.4; }
+  .banner .ic { flex: none; width: 34px; height: 34px; border-radius: 9px; background: #4f46e5; color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .banner b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .tabs { height: 54px; background: #fff; border-top: 1px solid #e5e5e5; display: flex; justify-content: space-around; align-items: center; font-size: 11.5px; color: var(--muted); }
+  .tabs .on { color: #4f46e5; font-weight: 700; }
+
   /* ---------- right: story + server ---------- */
   .right { flex: 1; display: flex; flex-direction: column; padding-top: 6px; }
   .kicker { font-size: 14px; font-weight: 700; color: var(--accent); letter-spacing: .5px; }
@@ -165,6 +182,32 @@ const SCENES = {
     stepAt: [[600, 0], [2300, 1], [6400, 2], [8800, 3]],
     skip: [4700, 6200, "⏱ 2 小时后", "你的系统处理完订单"],
   },
+  any: {
+    kicker: "不只是聊天 · 任何应用",
+    title: "没有 API 的应用，\n手机替你读出来",
+    sub: "通知转发到你的系统；定时打开应用，读屏幕上的数字。",
+    steps: ["应用通知", "转发", "打开并读屏", "发现变化"],
+    app: "小店管家", dur: 10500,
+    code: `<span class="k">def</span> <span class="f">on_notification</span>(n, bot):      <span class="c"># 任何受控应用的通知</span>
+    forward_to_team(n.title, n.text)
+<span class="k">def</span> <span class="f">on_screen</span>(screen, bot):         <span class="c"># bot.run([...]) 的结果</span>
+    value = extract(screen.texts)`,
+    orders: [[-1, "12", ""], [2300, "13", "+1"]],
+    banner: [700, 2900, "小店管家", "新订单：张三 下单 2 件 · ¥268"],
+    scan: [5200, 6700],
+    chips: [[4200, 5200, "⏰ 定时任务 · 打开应用"], [5200, 6700, "📖 读取屏幕文字"], [8300, 9300, "🏠 回到桌面"]],
+    log: [
+      [-1, "dim", "wecomdroid serve · apps=com.example.shop"],
+      [900, "in", "← [小店管家] 新订单：张三 下单 2 件 · ¥268"],
+      [1900, "out", "→ 已转发到团队群（webhook）"],
+      [4300, "cmd", "$ bot.run([launch, tap「数据」, read])"],
+      [5400, "dim", "  读到 9 段文字"],
+      [6800, "in", "← 今日订单 13 · 营业额 ¥3,668 · 待发货 4"],
+      [7500, "out", "→ 今日订单 12 → 13，已写入表格"],
+      [8500, "dim", "  ✓ 完成  4.1s"],
+    ],
+    stepAt: [[700, 0], [1900, 1], [4200, 2], [6800, 3]],
+  },
 };
 
 // ---------------------------------------------------------------- helpers
@@ -185,7 +228,33 @@ function bubbleHTML(m, a) {
   return `<div class="row ${me ? "me" : ""}" style="${style}">${av}<div style="display:flex;flex-direction:column;align-items:${me ? "flex-end" : "flex-start"}">${name}${body}</div></div>`;
 }
 
+function appPhoneHTML(sc, t) {
+  const o = sc.orders.filter(x => x[0] <= t).pop();
+  const chip = (sc.chips || []).find(([a, b]) => t >= a && t < b);
+  const chipA = chip ? Math.min(appear(t, chip[0], 200), 1 - ease((t - chip[1] + 200) / 200)) : 0;
+  const [b0, b1, bApp, bText] = sc.banner;
+  const bA = t >= b0 && t < b1 ? Math.min(appear(t, b0, 300), 1 - ease((t - b1 + 300) / 300)) : 0;
+  const scan = t >= sc.scan[0] && t < sc.scan[1];
+  const home = t >= 8300;
+  const body = home
+    ? `<div class="appbody" style="background:linear-gradient(160deg,#c7d2fe,#bbf7d0);align-items:center;justify-content:center;color:#334155;font-size:13px">桌面</div>`
+    : `<div class="apphead">▦ ${esc(sc.app)}</div>
+       <div class="appbody">
+         <div class="card2"><div class="lab">今日订单</div><div class="val">${o[1]}${o[2] ? `<small>${o[2]}</small>` : ""}</div>${scan ? '<div class="scan"></div>' : ""}</div>
+         <div class="card2"><div class="lab">今日营业额</div><div class="val">¥${o[1] === "12" ? "3,400" : "3,668"}</div>${scan ? '<div class="scan"></div>' : ""}</div>
+         <div class="rowlist"><div>待发货<span>${o[1] === "12" ? 3 : 4}</span></div><div>待评价<span>7</span></div><div>退款中<span>0</span></div></div>
+       </div>
+       <div class="tabs"><span>首页</span><span class="on">数据</span><span>订单</span><span>我的</span></div>`;
+  return `<div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span>● ● ▮</span></div>
+    ${body}
+    ${bA > 0 ? `<div class="banner" style="opacity:${bA};transform:translateY(${(1 - bA) * -24}px)"><div class="ic">店</div><div><b>${esc(bApp)} · 现在</b>${esc(bText)}</div></div>` : ""}
+    ${chip ? `<div class="chip" style="opacity:${chipA};top:${home ? 96 : 470}px">${chip[2]}</div>` : ""}
+  </div></div>`;
+}
+
 function phoneHTML(sc, t) {
+  if (sc.app) return appPhoneHTML(sc, t);
   const shown = sc.msgs.filter(m => m[0] <= t);
   const chip = (sc.chips || []).find(([a, b]) => t >= a && t < b);
   const chipA = chip ? Math.min(appear(t, chip[0], 200), 1 - ease((t - chip[1] + 200) / 200)) : 0;

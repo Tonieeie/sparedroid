@@ -22,7 +22,7 @@ import time
 from http.server import ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from .bot import Bot, load_handler
+from .bot import Bot, load_handler, load_hooks
 from .config import Config
 from .http import make_handler
 from .store import Store
@@ -37,7 +37,7 @@ def serve(cfg: Config) -> None:
     if problems:
         sys.exit("Config problems:\n  - " + "\n  - ".join(problems))
     sys.path.insert(0, ".")  # so WECOMDROID_HANDLER=my_handler:handle works from the working dir
-    bot = Bot(cfg, _store(cfg), load_handler(cfg.handler))
+    bot = Bot(cfg, _store(cfg), load_handler(cfg.handler), hooks=load_hooks(cfg.handler))
     prefix = urlparse(cfg.public_url).path if cfg.public_url else ""
     server = ThreadingHTTPServer((cfg.host, cfg.port), make_handler(bot, prefix))
     server.daemon_threads = True
@@ -52,9 +52,13 @@ def serve(cfg: Config) -> None:
 
     threading.Thread(target=patrol, daemon=True).start()
     log = logging.getLogger("wecomdroid")
-    log.info("listening on http://%s:%d%s  handler=%s", cfg.host, cfg.port, prefix or "/", cfg.handler)
+    log.info("listening on http://%s:%d%s  handler=%s  hooks=%s", cfg.host, cfg.port, prefix or "/", cfg.handler,
+             ",".join(bot.hooks) or "-")
+    log.info("apps: %s", ", ".join(cfg.apps))
     log.info("chats: %s%s", "every chat" if "*" in cfg.chats else " | ".join(sorted(cfg.chats)),
              f"  (ignoring: {' | '.join(sorted(cfg.ignore_chats))})" if cfg.ignore_chats else "")
+    for w in cfg.warnings():
+        log.warning(w)
     if not cfg.alert_webhook:
         log.warning("WECOMDROID_ALERT_WEBHOOK is not set: nobody will be told if the phone goes offline")
     server.serve_forever()
@@ -90,8 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "config":
         endpoint = cfg.public_url or f"http://<this-machine-ip>:{cfg.port}"
         print("Copy this whole line to the phone, then tap 「从剪贴板导入配置」 (Import from clipboard):\n")
-        print(json.dumps({"endpoint": endpoint, "token": cfg.token, "pin": "", "bot": cfg.bot_name},
-                         ensure_ascii=False))
+        print(json.dumps({"endpoint": endpoint, "token": cfg.token, "pin": "", "bot": cfg.bot_name,
+                          "apps": list(cfg.apps)}, ensure_ascii=False))
         return 0
 
     store = _store(cfg)

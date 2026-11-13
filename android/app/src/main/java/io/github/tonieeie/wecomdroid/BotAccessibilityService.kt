@@ -69,7 +69,7 @@ class BotAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onAccessibilityEvent(e: AccessibilityEvent) {
-        if (e.packageName?.toString() != WEWORK_PACKAGE) return
+        if (e.packageName?.toString() !in cfg.apps) return
         Status.lastWeComEventAt = System.currentTimeMillis()
 
         // 侦察模式：每换一个界面，等内容加载完再导出整棵树。执行指令期间不导，免得刷屏。
@@ -85,10 +85,10 @@ class BotAccessibilityService : AccessibilityService() {
     }
 
     fun enqueueDump(reason: String, activity: String? = null) {
-        val root = rootInActiveWindow ?: return
-        if (root.packageName?.toString() != WEWORK_PACKAGE) return
+        val root = appRoot() ?: return
         val payload = JSONObject().apply {
             put("reason", reason)
+            put("package", root.packageName?.toString())
             put("activity", activity)
             put("screen", screenSize())
             put("tree", TreeDumper.tree(root))
@@ -116,7 +116,7 @@ class BotAccessibilityService : AccessibilityService() {
         }
 
         waitFor(8_000) {
-            val root = weworkRoot() ?: return@waitFor null
+            val root = appRoot() ?: return@waitFor null
             if (titleMatches(root, chat) && findEditable(root) != null) true else null
         } ?: throw CmdError(
             "chat_not_opened",
@@ -125,7 +125,7 @@ class BotAccessibilityService : AccessibilityService() {
     }
 
     fun readScreen(): JSONObject {
-        val root = weworkRoot() ?: throw CmdError("not_wework", "当前前台不是企业微信")
+        val root = appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用（见设置页的应用列表）")
         return JSONObject().apply {
             put("screen", screenSize())
             put("nodes", TreeDumper.flat(root))
@@ -133,15 +133,15 @@ class BotAccessibilityService : AccessibilityService() {
     }
 
     fun dumpTree(): JSONObject {
-        val root = weworkRoot() ?: throw CmdError("not_wework", "当前前台不是企业微信")
+        val root = appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用（见设置页的应用列表）")
         return JSONObject().apply {
             put("screen", screenSize())
             put("tree", TreeDumper.tree(root))
         }
     }
 
-    fun sendText(text: String) {
-        val root = weworkRoot() ?: throw CmdError("not_wework", "当前前台不是企业微信")
+    fun sendText(text: String, sendLabel: String = "发送") {
+        val root = appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用（见设置页的应用列表）")
         val input = findEditable(root)
             ?: throw CmdError("no_input", "没找到输入框（可能处于语音输入模式）")
 
@@ -154,13 +154,13 @@ class BotAccessibilityService : AccessibilityService() {
         }
 
         // 填字后"发送"按钮才会出现（空输入框时那个位置是"+"）。
-        val sendBtn = waitFor(3_000) { weworkRoot()?.let { findByExactText(it, "发送") } }
-            ?: throw CmdError("no_send_button", "填字后没出现「发送」按钮")
-        if (!click(sendBtn)) throw CmdError("click_failed", "点「发送」失败")
+        val sendBtn = waitFor(3_000) { appRoot()?.let { findByExactText(it, sendLabel) } }
+            ?: throw CmdError("no_send_button", "填字后没出现「$sendLabel」按钮")
+        if (!click(sendBtn)) throw CmdError("click_failed", "点「$sendLabel」失败")
 
         // 发出去的判据：输入框被清空。没清空就如实报"不确定"，交给人看，不重试（防重复发送）。
         waitFor(3_000) {
-            val r = weworkRoot() ?: return@waitFor null
+            val r = appRoot() ?: return@waitFor null
             val e = findEditable(r) ?: return@waitFor null
             val now = e.text?.toString().orEmpty()
             if (now != text) true else null
@@ -181,7 +181,7 @@ class BotAccessibilityService : AccessibilityService() {
      * 返回 null 表示已点上"引用"；否则返回没做成的原因（界面已恢复，可以直接普通发送）。
      * 长按菜单里只点文字恰好是"引用"的那一项 —— 旁边就是"撤回""删除"，点错不可挽回。
      */
-    fun quoteMessage(key: String, maxPages: Int): String? {
+    fun quoteMessage(key: String, maxPages: Int, quoteLabel: String = "引用"): String? {
         var bubble = findBubble(key)
         var pages = 0
         while (bubble == null && pages < maxPages) {
@@ -193,7 +193,7 @@ class BotAccessibilityService : AccessibilityService() {
         if (bubble == null) return "not_found"
 
         if (!longClick(bubble)) return "long_click_failed"
-        val item = waitFor(2_000) { findInAllWindows { it.text?.toString()?.trim() == "引用" } }
+        val item = waitFor(2_000) { findInAllWindows { it.text?.toString()?.trim() == quoteLabel } }
         if (item == null) {
             performGlobalAction(GLOBAL_ACTION_BACK) // 关掉长按菜单
             Thread.sleep(400)
@@ -218,14 +218,16 @@ class BotAccessibilityService : AccessibilityService() {
      * 一个都没有、或有重名的，一律停手。确认弹窗里再核对一次群名才点"发送"。
      * [caption] 填进确认弹窗的留言框（有的话），跟文件一起发出。
      */
-    fun shareFile(file: java.io.File, chat: String, caption: String?): JSONObject {
+    fun shareFile(file: java.io.File, chat: String, caption: String?,
+                  pkg: String = WEWORK_PACKAGE, sendLabel: String = "发送"): JSONObject {
+        if (pkg !in cfg.apps) throw CmdError("not_allowed_app", "$pkg 不在受控应用列表里")
         val detail = JSONObject()
         val uri = FileShareProvider.uriFor(file)
         val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
             type = FileShareProvider.mimeOf(file.name)
             putExtra(android.content.Intent.EXTRA_STREAM, uri)
             clipData = android.content.ClipData.newRawUri(file.name, uri)
-            setPackage(WEWORK_PACKAGE)
+            setPackage(pkg)
             addFlags(
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -253,7 +255,7 @@ class BotAccessibilityService : AccessibilityService() {
 
         // 1. 等"选择聊天"界面出来：能看到这个群名，或者至少有搜索入口
         waitFor(8_000) {
-            weworkRoot()?.let { r ->
+            appRoot()?.let { r ->
                 if (chatMatches(r, chat).isNotEmpty() || findSearchEntry(r) != null) true else null
             }
         } ?: throw CmdError(
@@ -263,7 +265,7 @@ class BotAccessibilityService : AccessibilityService() {
         )
 
         // 2. 先在最近聊天里找；没有再搜
-        var hits = weworkRoot()?.let { chatMatches(it, chat) } ?: emptyList()
+        var hits = appRoot()?.let { chatMatches(it, chat) } ?: emptyList()
         detail.put("found_in", "recent")
         if (hits.isEmpty()) {
             detail.put("found_in", "search")
@@ -275,11 +277,11 @@ class BotAccessibilityService : AccessibilityService() {
         if (!click(hits[0])) throw CmdError("click_failed", "点选「$chat」失败")
 
         // 3. 确认弹窗：核对群名，填留言，点发送
-        val sendBtn = waitFor(5_000) { findInAllWindows { it.text?.toString()?.trim() == "发送" } }
+        val sendBtn = waitFor(5_000) { findInAllWindows { it.text?.toString()?.trim() == sendLabel } }
             ?: throw CmdError("no_confirm_dialog", "点选后没出现「发送」确认")
         // 只在弹窗自己那个窗口里核对；背后的会话列表里也有这个群名，搜全部窗口会被它蒙混过关。
         // 万一弹窗跟列表在同一个窗口，就排除掉刚才点的那一条（按屏幕位置）。
-        val dialogRoot = sendBtn.window?.root ?: weworkRoot()
+        val dialogRoot = sendBtn.window?.root ?: appRoot()
         val dialogShowsChat = dialogRoot != null && chatMatches(dialogRoot, chat).any { n ->
             Rect().also { n.getBoundsInScreen(it) } != picked
         }
@@ -304,7 +306,7 @@ class BotAccessibilityService : AccessibilityService() {
 
         // 4. 弹窗消失 = 已提交给企业微信发送
         waitFor(5_000) {
-            if (findInAllWindows { it.text?.toString()?.trim() == "发送" && it.isClickable } == null) true else null
+            if (findInAllWindows { it.text?.toString()?.trim() == sendLabel && it.isClickable } == null) true else null
         } ?: throw CmdError("send_unconfirmed", "点了发送但确认弹窗没关，不确定是否发出 —— 请人工看一眼")
         return detail
     }
@@ -362,13 +364,13 @@ class BotAccessibilityService : AccessibilityService() {
     }
 
     private fun searchChat(chat: String): List<AccessibilityNodeInfo> {
-        val root = weworkRoot() ?: return emptyList()
+        val root = appRoot() ?: return emptyList()
         val entry = findSearchEntry(root) ?: throw CmdError("no_search", "「选择聊天」里没找到搜索框")
         if (!entry.isEditable) {
             click(entry)
             Thread.sleep(600)
         }
-        val box = waitFor(3_000) { weworkRoot()?.let { findEditable(it) } }
+        val box = waitFor(3_000) { appRoot()?.let { findEditable(it) } }
             ?: throw CmdError("no_search", "点了搜索但没出现输入框")
         box.performAction(
             AccessibilityNodeInfo.ACTION_SET_TEXT,
@@ -379,16 +381,16 @@ class BotAccessibilityService : AccessibilityService() {
         var stable = 0
         for (i in 0 until 15) {
             Thread.sleep(300)
-            val n = weworkRoot()?.let { chatMatches(it, chat).size } ?: 0
+            val n = appRoot()?.let { chatMatches(it, chat).size } ?: 0
             if (n == last && n > 0) stable++ else stable = 0
             last = n
             if (stable >= 2) break
         }
-        return weworkRoot()?.let { chatMatches(it, chat) } ?: emptyList()
+        return appRoot()?.let { chatMatches(it, chat) } ?: emptyList()
     }
 
     private fun findBubble(key: String): AccessibilityNodeInfo? {
-        val root = weworkRoot() ?: return null
+        val root = appRoot() ?: return null
         var best: AccessibilityNodeInfo? = null
         var bestTop = Int.MIN_VALUE
         val r = Rect()
@@ -403,7 +405,7 @@ class BotAccessibilityService : AccessibilityService() {
 
     /** 消息列表 = 面积最大的可滚动控件。往上翻一页（看更早的消息）。 */
     private fun scrollMessagesUp(): Boolean {
-        val root = weworkRoot() ?: return false
+        val root = appRoot() ?: return false
         var list: AccessibilityNodeInfo? = null
         var area = 0
         val r = Rect()
@@ -431,7 +433,7 @@ class BotAccessibilityService : AccessibilityService() {
     private fun findInAllWindows(pred: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         val roots = windows.mapNotNull { it.root }.ifEmpty { listOfNotNull(rootInActiveWindow) }
         for (root in roots) {
-            if (root.packageName?.toString() != WEWORK_PACKAGE) continue
+            if (root.packageName?.toString() !in cfg.apps) continue
             var hit: AccessibilityNodeInfo? = null
             TreeDumper.walk(root) { n -> if (hit == null && n.isVisibleToUser && pred(n)) hit = n }
             if (hit != null) return hit
@@ -439,10 +441,83 @@ class BotAccessibilityService : AccessibilityService() {
         return null
     }
 
+    // ---------- 通用动作：对任何受控应用都能用 ----------
+
+    /** 打开一个受控应用，等它到前台。 */
+    fun launch(pkg: String) {
+        if (pkg !in cfg.apps) throw CmdError("not_allowed_app", "$pkg 不在受控应用列表里")
+        val intent = packageManager.getLaunchIntentForPackage(pkg)
+            ?: throw CmdError("not_installed", "手机上没装 $pkg，或它没有可启动的界面")
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            throw CmdError("launch_failed", "打开 $pkg 失败：${e.message}")
+        }
+        waitFor(8_000) { if (rootInActiveWindow?.packageName?.toString() == pkg) true else null }
+            ?: throw CmdError("launch_timeout", "$pkg 没有到前台。当前屏幕：${describeForeground()}")
+    }
+
+    /** 点一个控件：按文字 / 无障碍描述找（默认完全相等，contains=true 时包含即可）。只在受控应用里找。 */
+    fun tapText(label: String, contains: Boolean) {
+        val node = waitFor(3_000) {
+            findInAllWindows { n ->
+                val t = (n.text ?: n.contentDescription)?.toString()?.trim() ?: return@findInAllWindows false
+                if (contains) t.contains(label) else t == label
+            }
+        } ?: throw CmdError("not_found", "屏幕上没找到「$label」")
+        if (!click(node)) throw CmdError("click_failed", "点「$label」失败")
+    }
+
+    /** 点屏幕坐标。前台必须是受控应用。 */
+    fun tapAt(x: Int, y: Int) {
+        appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用")
+        val path = android.graphics.Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        val gesture = android.accessibilityservice.GestureDescription.Builder()
+            .addStroke(android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 60)).build()
+        if (!dispatchGesture(gesture, null, null)) throw CmdError("click_failed", "点击 ($x,$y) 失败")
+        Thread.sleep(150)
+    }
+
+    /** 往输入框里填字：屏幕上唯一的输入框，或当前有焦点的那个。 */
+    fun inputText(text: String) {
+        val root = appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用")
+        val box = findEditable(root) ?: root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable }
+            ?: throw CmdError("no_input", "没找到输入框（屏幕上没有，或有多个且都没焦点）")
+        val ok = box.performAction(
+            AccessibilityNodeInfo.ACTION_SET_TEXT,
+            Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+        )
+        if (!ok) throw CmdError("set_text_failed", "往输入框填字失败")
+    }
+
+    /** 滚动最大的可滚动区域。down = 看后面的内容。 */
+    fun scroll(down: Boolean) {
+        val root = appRoot() ?: throw CmdError("not_target_app", "当前前台不是受控应用")
+        var list: AccessibilityNodeInfo? = null
+        var area = 0
+        val r = Rect()
+        TreeDumper.walk(root) { n ->
+            if (!n.isScrollable) return@walk
+            n.getBoundsInScreen(r)
+            if (r.width() * r.height() > area) { list = n; area = r.width() * r.height() }
+        }
+        val action = if (down) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        if (list?.performAction(action) != true) throw CmdError("scroll_failed", "没有可滚动的区域，或已经到头")
+    }
+
+    fun back() {
+        performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
+    /** 当前前台应用的包名（给结果里带上，方便服务器确认读的是谁）。 */
+    fun foregroundPackage(): String? = rootInActiveWindow?.packageName?.toString()
+
     // ---------- 界面识别小工具 ----------
 
-    private fun weworkRoot(): AccessibilityNodeInfo? =
-        rootInActiveWindow?.takeIf { it.packageName?.toString() == WEWORK_PACKAGE }
+    /** 前台窗口，前提是它属于受控应用；否则 null —— 没列出的应用一律不读不点。 */
+    private fun appRoot(): AccessibilityNodeInfo? =
+        rootInActiveWindow?.takeIf { it.packageName?.toString() in cfg.apps }
 
     private fun screenSize(): String {
         val m = resources.displayMetrics

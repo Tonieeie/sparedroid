@@ -17,7 +17,7 @@ deduplicate by `event_id` (it does).
 
 | `type` | `payload` |
 |---|---|
-| `notification` | Raw WeCom notification: `chat`, `title`, `text`, `big_text`, `ticker`, `mentioned`, `can_reply`, `post_time`, … |
+| `notification` | Raw notification from an allow-listed app: `package`, `chat`, `title`, `text`, `big_text`, `ticker`, `mentioned`, `can_reply`, `post_time`, … |
 | `command_result` | `command_id`, `type`, `ok`, `error`, `message`, plus `screen` (for `snapshot`), `quoted` (for `reply_quote`), `screen_on_error` |
 | `ui_dump` | Full accessibility tree of the current WeCom screen (recon mode) |
 
@@ -32,7 +32,15 @@ two hours late is worse than none.
 | `send_text` | `chat`, `text` | Open the chat, verify the title, type, tap 发送, confirm the input box cleared |
 | `reply_quote` | `chat`, `quote_key`, `text` | Find the bubble whose normalised text equals `quote_key` (scroll up ≤ 5 pages), long-press → 引用, then send. Falls back to a plain send and reports `quoted: false` |
 | `share_file` | `chat`, `path`, `filename`, `caption` | Download `path`, share it to WeCom, pick the chat whose name matches exactly and uniquely, re-check the name in the confirm dialog, send |
+| `run` | `steps: [...]` | Generic steps in any allow-listed app, stopping at the first failure: `launch {package}`, `read`, `tap {text[, contains]}` or `tap {x, y}`, `input {text}`, `scroll {direction}`, `back`, `home`, `wait {ms}`. Result carries `screen` (from the last `read`), `package`, and `failed_step` on error |
 | `dump` / `home` | – | Export the current screen / go to the home screen |
+
+`send_text`, `reply_quote` and `share_file` accept optional `send_label` / `quote_label` (button texts,
+default 发送 / 引用) and `share_file` an optional `package`.
+
+**Allow-list.** The phone holds a list of package names (settings page, or `apps` in the imported
+config). Notifications from other apps are not forwarded, and every read / tap / input checks that the
+foreground window belongs to a listed app, failing with `not_target_app` / `not_allowed_app` otherwise.
 
 Commands are never re-sent automatically. If a result never arrives the server alerts a human.
 

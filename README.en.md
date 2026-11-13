@@ -2,7 +2,11 @@
 
 # WeComDroid
 
-**Turn a spare Android phone into an AI customer-service / order-taking bot for WeCom (企业微信) external groups**
+**Turn a spare Android phone into an API for apps that have none**
+
+It listens to an app's notifications, reads its screen, and taps and types for you, only in the apps you
+allow-list. What to do with what it sees is a few lines of Python on your own server.
+First and most polished use case: **AI customer-service / order-taking bots in WeCom (企业微信) external groups.**
 
 WeCom's official bots can't join external groups (groups with customers outside your company).
 WeComDroid lets an old Android phone sit in the group for you: when someone @-mentions it,
@@ -102,6 +106,23 @@ def handle(msg: Message, bot) -> str | Reply | None:
 
 Later, from anywhere: `bot.reply(msg_id, text, quote=True)`, `bot.send_file(chat, path, caption=...)`,
 `bot.alert(text)` - or the CLI: `wecomdroid reply <id> "..." --quote`.
+
+## Beyond chat (0.2.0)
+
+```python
+def on_notification(n, bot): ...   # any notification from an allow-listed app
+def on_tick(bot):                  # every ~30 s
+    bot.run([{"do": "launch", "package": "com.example.shop"}, {"do": "tap", "text": "Stats"},
+             {"do": "read"}, {"do": "home"}], tag="sales")
+def on_screen(screen, bot): ...    # screen.texts = everything that was on screen
+```
+
+![Any app](docs/media/demo-any.gif)
+
+Examples: `examples.notify_forward` (notifications → webhook), `examples.screen_watch` (read a number
+on a schedule, alert on change). Set `WECOMDROID_APPS` to the package names the phone may touch;
+everything else is invisible to it. The generic steps are new and not yet verified on a real device;
+the WeCom chat flow is. The Chinese README has the full requirements and setup tables.
 
 ## Risks
 

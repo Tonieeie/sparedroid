@@ -31,6 +31,33 @@ object CommandRunner {
         exec.execute { run(app, cmd) }
     }
 
+    /**
+     * 通用动作，一步一个。全部只作用于受控应用（见 Config.apps）。
+     *   {"do": "launch", "package": "com.x"}      打开应用
+     *   {"do": "read"}                             读出当前屏幕的全部文字 → result.screen
+     *   {"do": "tap", "text": "确定"}              点文字 / 描述为「确定」的控件（"contains": true 时包含即可）
+     *   {"do": "tap", "x": 540, "y": 1200}         点坐标
+     *   {"do": "input", "text": "..."}             往输入框填字
+     *   {"do": "scroll", "direction": "down"}      滚动
+     *   {"do": "back"} / {"do": "home"}            返回 / 回桌面
+     *   {"do": "wait", "ms": 800}                  等一下（最多 10 秒）
+     */
+    private fun step(svc: BotAccessibilityService, s: JSONObject, result: JSONObject) {
+        when (val what = s.optString("do")) {
+            "launch" -> svc.launch(s.getString("package"))
+            "read" -> result.put("screen", svc.readScreen())
+            "tap" -> if (s.has("x")) svc.tapAt(s.getInt("x"), s.getInt("y"))
+                     else svc.tapText(s.getString("text"), s.optBoolean("contains", false))
+            "input" -> svc.inputText(s.getString("text"))
+            "scroll" -> svc.scroll(s.optString("direction", "down") != "up")
+            "back" -> svc.back()
+            "home" -> svc.goHome()
+            "wait" -> Thread.sleep(s.optLong("ms", 500).coerceIn(0, 10_000))
+            else -> throw CmdError("unknown_step", "不认识的动作：$what")
+        }
+        Thread.sleep(250) // 让界面跟上
+    }
+
     /** 群里显示的文件名来自服务器；去掉路径符号和控制字符，防止写到共享目录外面。 */
     private fun safeFileName(raw: String): String {
         val s = raw.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().trimStart('.')
@@ -70,7 +97,7 @@ object CommandRunner {
                     if (text.length > 4000) throw CmdError("text_too_long", "内容超过 4000 字")
                     touchedUi = true
                     svc.openChat(chat)
-                    svc.sendText(text)
+                    svc.sendText(text, args.optString("send_label", "发送"))
                     result.put("chat", chat)
                 }
                 "reply_quote" -> {
@@ -81,14 +108,14 @@ object CommandRunner {
                     if (text.isBlank()) throw CmdError("empty_text", "要发送的内容为空")
                     touchedUi = true
                     svc.openChat(chat)
-                    val why = svc.quoteMessage(key, args.optInt("max_pages", 5))
+                    val why = svc.quoteMessage(key, args.optInt("max_pages", 5), args.optString("quote_label", "引用"))
                     result.put("chat", chat)
                     result.put("quoted", why == null)
                     if (why != null) {
                         result.put("quote_failed", why)
                         if (!args.optBoolean("fallback_plain", true)) throw CmdError("quote_failed", why)
                     }
-                    svc.sendText(text)
+                    svc.sendText(text, args.optString("send_label", "发送"))
                 }
                 "share_file" -> {
                     // 下载服务器上的文件（如 PDF），分享到指定会话；caption 作为留言一起发
@@ -102,7 +129,9 @@ object CommandRunner {
                     Http.download("${cfg.endpoint}/${path.trimStart('/')}", cfg.token, file)
                     result.put("chat", chat).put("filename", name).put("size", file.length())
                     touchedUi = true
-                    val detail = svc.shareFile(file, chat, args.optString("caption").ifBlank { null })
+                    val detail = svc.shareFile(file, chat, args.optString("caption").ifBlank { null },
+                                               args.optString("package", WEWORK_PACKAGE),
+                                               args.optString("send_label", "发送"))
                     result.put("share", detail)
                 }
                 "snapshot" -> {
@@ -115,6 +144,22 @@ object CommandRunner {
                 }
                 "dump" -> result.put("dump", svc.dumpTree())
                 "home" -> svc.goHome()
+                // 多步操作：按顺序做完一串通用动作（见 step），任何一步失败就停。
+                // 一次指令做完，省掉每步 3 秒的轮询往返。return_home 默认 false —— 要回桌面就加一步 home。
+                "run" -> {
+                    val steps = args.getJSONArray("steps")
+                    if (steps.length() > 40) throw CmdError("too_many_steps", "一次最多 40 步")
+                    for (i in 0 until steps.length()) {
+                        val s = steps.getJSONObject(i)
+                        try {
+                            step(svc, s, result)
+                        } catch (e: CmdError) {
+                            result.put("failed_step", i)
+                            throw e
+                        }
+                    }
+                    result.put("package", svc.foregroundPackage())
+                }
                 else -> throw CmdError("unknown_command", "不认识的指令类型：$type")
             }
             result.put("ok", true)

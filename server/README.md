@@ -1,7 +1,8 @@
 # wecomdroid (server)
 
-Server side of [WeComDroid](https://github.com/Tonieeie/wecomdroid): turn a spare Android phone
-into a WeCom (企业微信) group bot that works in external groups.
+Server side of [WeComDroid](https://github.com/Tonieeie/wecomdroid): turn a spare Android phone into an
+API for apps that have none. It listens to notifications, reads screens and acts; your Python decides.
+First use case: WeCom (企业微信) bots in external groups.
 
 ```bash
 pip install wecomdroid            # core, standard library only

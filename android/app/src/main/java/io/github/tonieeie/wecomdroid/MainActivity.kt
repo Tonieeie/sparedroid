@@ -70,6 +70,7 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, on -> cfg.dumpMode = on }
         }
 
+        val apps = field(cfg.apps.joinToString(","), "受控应用包名，逗号分隔")
         val pin = field(cfg.certPin, "服务器证书指纹（连 VPS 必填；局域网调试留空）")
 
         // 口令和指纹都是几十位的乱码，手敲必错。服务器上 `wecomdroid config`
@@ -86,6 +87,10 @@ class MainActivity : Activity() {
                 token.setText(tk)
                 pin.setText(json.optString("pin"))
                 if (json.optString("bot").isNotEmpty()) botName.setText(json.optString("bot"))
+                json.optJSONArray("apps")?.let { a ->
+                    val list = (0 until a.length()).map { a.getString(it) }.toSet()
+                    if (list.isNotEmpty()) { cfg.apps = list; apps.setText(list.joinToString(",")) }
+                }
                 cfg.endpoint = ep
                 cfg.token = tk
                 cfg.certPin = json.optString("pin")
@@ -104,11 +109,14 @@ class MainActivity : Activity() {
         col.addView(pin)
         col.addView(label("机器人显示名"))
         col.addView(botName)
+        col.addView(label("受控应用（只有这里列出的应用会被读取和操作）"))
+        col.addView(apps)
         col.addView(button("保存") {
             cfg.endpoint = endpoint.text.toString()
             cfg.token = token.text.toString()
             cfg.certPin = pin.text.toString()
             cfg.botName = botName.text.toString()
+            cfg.apps = apps.text.toString().split(',', ' ', '|').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
             Uploader.wake()
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         })
@@ -163,7 +171,7 @@ class MainActivity : Activity() {
 
     private fun listenerGranted(): Boolean {
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
-        val me = ComponentName(this, WeComNotificationListener::class.java).flattenToString()
+        val me = ComponentName(this, AppNotificationListener::class.java).flattenToString()
         return flat.split(":").any { it == me }
     }
 

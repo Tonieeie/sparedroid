@@ -3,6 +3,7 @@ package io.github.tonieeie.wecomdroid
 import android.content.Context
 import java.util.UUID
 
+/** 默认受控应用：企业微信。其它应用在设置页 / 导入配置里加。 */
 const val WEWORK_PACKAGE = "com.tencent.wework"
 
 /** 手机上唯一需要人填的三样东西：服务器地址、口令、机器人在群里的显示名。 */
@@ -30,6 +31,15 @@ class Config(ctx: Context) {
             sp.edit().putString("cert_pin", v.trim()).apply()
             Http.certPin = v.trim()
         }
+
+    /**
+     * 受控应用的包名。**只有这里列出的应用**，本 App 才会转发它的通知、读它的界面、替人点它。
+     * 没列出的应用（比如银行、支付）一律不碰 —— 这是安全边界，不是功能开关。
+     */
+    var apps: Set<String>
+        get() = sp.getString("apps", "")!!.split(',', ' ', '|', '\n')
+            .map { it.trim() }.filter { it.isNotEmpty() }.toSet().ifEmpty { setOf(WEWORK_PACKAGE) }
+        set(v) = sp.edit().putString("apps", v.joinToString(",")).apply()
 
     /** 侦察模式：企业微信每换一个界面就把整棵控件树传上去，用于摸清新版界面结构。 */
     var dumpMode: Boolean

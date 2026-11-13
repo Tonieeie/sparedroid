@@ -5,9 +5,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- 只为了能拉起企业微信；不需要 QUERY_ALL_PACKAGES。 -->
+    <!-- 能看到并拉起"有桌面图标的应用"（launch 指令用）；不需要 QUERY_ALL_PACKAGES。 -->
     <queries>
-        <package android:name="com.tencent.wework" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
     </queries>
 
     <!-- usesCleartextTraffic：允许局域网 http 调试。上线请用 https 端点。 -->
@@ -47,7 +54,7 @@
             android:grantUriPermissions="true" />
 
         <service
-            android:name=".WeComNotificationListener"
+            android:name=".AppNotificationListener"
             android:exported="false"
             android:label="@string/listener_label"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">

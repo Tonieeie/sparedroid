@@ -49,6 +49,13 @@ class Config:
     chats: frozenset[str] = frozenset()
     """Chats the bot works in. ``*`` means every chat it is a member of."""
 
+    apps: tuple[str, ...] = ("com.tencent.wework",)
+    """Android package names the phone may watch and operate. Nothing else is ever touched."""
+
+    send_label: str = "发送"
+    quote_label: str = "引用"
+    """Button texts in the chat app (change for other apps / languages, e.g. "Send", "Reply")."""
+
     ignore_chats: frozenset[str] = frozenset()
     """Chats the bot must never act in, even with ``*``."""
 
@@ -78,6 +85,10 @@ class Config:
             bot_name=e("WECOMDROID_BOT_NAME", ""),
             handler=e("WECOMDROID_HANDLER", "examples.echo:handle"),
             chats=_names(e("WECOMDROID_CHATS", "")),
+            apps=tuple(a.strip() for a in e("WECOMDROID_APPS", "com.tencent.wework").replace("|", ",").split(",")
+                       if a.strip()),
+            send_label=e("WECOMDROID_SEND_LABEL", "发送"),
+            quote_label=e("WECOMDROID_QUOTE_LABEL", "引用"),
             ignore_chats=_names(e("WECOMDROID_IGNORE_CHATS", "")),
             host=e("WECOMDROID_HOST", "127.0.0.1"),
             port=_int("WECOMDROID_PORT", 8788),
@@ -98,9 +109,16 @@ class Config:
         out = []
         if len(self.token) < 24:
             out.append("WECOMDROID_TOKEN must be at least 24 characters")
+        if not self.apps:
+            out.append("WECOMDROID_APPS is empty: the phone would not be allowed to touch any app")
+        return out
+
+    def warnings(self) -> list[str]:
+        """Fine for notification-forwarding or screen-reading setups; wrong for a chat bot."""
+        out = []
         if not self.bot_name:
-            out.append("WECOMDROID_BOT_NAME is required (the bot's display name in groups)")
+            out.append("WECOMDROID_BOT_NAME is not set: @-mentions cannot be recognised reliably (chat bot use)")
         if not self.chats:
-            out.append("WECOMDROID_CHATS is empty, so the bot will ignore every chat "
+            out.append("WECOMDROID_CHATS is empty: the bot will not reply in any chat "
                        "(list chat names separated by |, or * for all)")
         return out

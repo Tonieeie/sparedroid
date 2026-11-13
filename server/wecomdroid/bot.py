@@ -28,7 +28,7 @@ from collections import deque
 from pathlib import Path
 from typing import Callable
 
-from .api import Message, Reply
+from .api import Message, Notification, Reply, Screen
 from .config import Config
 from .store import Store
 from .text import find_trigger_message, norm, split_notification, strip_leading_mentions
@@ -45,15 +45,28 @@ Handler = Callable[[Message, "Bot"], "str | Reply | None"]
 
 def load_handler(spec: str) -> Handler:
     module, _, func = spec.partition(":")
-    return getattr(importlib.import_module(module), func or "handle")
+    return getattr(importlib.import_module(module), func or "handle", None) or (lambda msg, bot: None)
+
+
+def load_hooks(spec: str) -> dict:
+    """Optional functions in the handler's module:
+
+    * ``on_notification(n: Notification, bot)`` - every notification from an allow-listed app
+    * ``on_screen(screen: Screen, bot)``        - result of a ``bot.run([...])``
+    * ``on_tick(bot)``                          - called about every 30 seconds
+    """
+    module = importlib.import_module(spec.partition(":")[0])
+    return {name: getattr(module, name) for name in ("on_notification", "on_screen", "on_tick")
+            if callable(getattr(module, name, None))}
 
 
 class Bot:
     def __init__(self, cfg: Config, store: Store, handler: Handler, *,
-                 alert: Callable[[str], None] | None = None):
+                 alert: Callable[[str], None] | None = None, hooks: dict | None = None):
         self.cfg = cfg
         self.store = store
         self.handler = handler
+        self.hooks = hooks or {}
         self.lock = threading.RLock()
         self._alert = alert or self._webhook_alert
         self._sent: dict[str, deque] = {}
@@ -96,8 +109,22 @@ class Bot:
         elif kind == "ui_dump":
             self._save_dump("dump", p)
 
+    def _hook(self, name: str, *args) -> None:
+        fn = self.hooks.get(name)
+        if fn is None:
+            return
+        try:
+            fn(*args, self)
+        except Exception as exc:  # noqa: BLE001 - user code must not take the bot down
+            log.exception("%s failed", name)
+            self.alert(f"**WeComDroid**: {name} crashed: {type(exc).__name__}: {exc}")
+
     def _on_notification(self, p: dict) -> None:
         chat = p.get("chat") or ""
+        app = p.get("package") or "com.tencent.wework"
+        self._hook("on_notification", Notification(
+            app=app, title=p.get("title") or "", text=p.get("big_text") or p.get("text") or "",
+            chat=chat, mentioned=bool(p.get("mentioned")), posted_at=(p.get("post_time") or 0) / 1000, raw=p))
         if not p.get("mentioned"):
             return
         if not self.cfg.works_in(chat):
@@ -109,7 +136,7 @@ class Bot:
         sender, content = split_notification(p.get("text") or p.get("ticker") or "")
         log.info("%s mentioned the bot in %r; reading the chat", sender, chat)
         self.store.enqueue("snapshot", {"chat": chat}, ttl_s=READ_TTL_S,
-                           context={"purpose": "read", "sender": sender, "content": content})
+                           context={"purpose": "read", "sender": sender, "content": content, "app": app})
 
     def _on_result(self, p: dict) -> None:
         ok = bool(p.get("ok"))
@@ -119,6 +146,13 @@ class Bot:
             return
         log.info("result %s/%s: %s", cmd["type"], cmd["context"].get("purpose"),
                  "ok" if ok else f"{p.get('error')}: {p.get('message')}")
+        if cmd["type"] == "run":
+            nodes = (p.get("screen") or {}).get("nodes") or []
+            self._hook("on_screen", Screen(
+                tag=cmd["context"].get("tag", ""), ok=ok, app=p.get("package") or "",
+                texts=[n["text"] for n in nodes if n.get("text")],
+                error="" if ok else f"{p.get('error')}: {p.get('message')}", raw=p))
+            return
         if ok and cmd["type"] == "snapshot":
             self._on_snapshot(cmd["args"]["chat"], p.get("screen") or {}, cmd["context"])
         elif not ok:
@@ -135,7 +169,7 @@ class Bot:
         mention_first, body = strip_leading_mentions(text, self.cfg.bot_name)
         mid = self.store.add_message(chat=chat, sender=ctx.get("sender", ""), text=text, quote_key=norm(text))
         msg = Message(id=mid, chat=chat, sender=ctx.get("sender", ""), text=text,
-                      body=body, mention_first=mention_first)
+                      body=body, mention_first=mention_first, app=ctx.get("app", "com.tencent.wework"))
         try:
             out = self.handler(msg, self)
         except Exception as exc:  # noqa: BLE001
@@ -185,18 +219,36 @@ class Bot:
                 self.alert(f"**WeComDroid**: rate limit hit in 「{m.chat}」; dropped a reply to {m.sender}.")
                 return ""
             if quote:
-                cmd = self.store.enqueue("reply_quote", {"chat": m.chat, "quote_key": norm(m.text), "text": text},
+                cmd = self.store.enqueue("reply_quote", {"chat": m.chat, "quote_key": norm(m.text), "text": text,
+                                                         **self._labels()},
                                          ttl_s=ttl_s, context={"purpose": purpose, "message": m.id})
             else:
-                cmd = self.store.enqueue("send_text", {"chat": m.chat, "text": text},
+                cmd = self.store.enqueue("send_text", {"chat": m.chat, "text": text, **self._labels()},
                                          ttl_s=ttl_s, context={"purpose": purpose, "message": m.id})
             return cmd["id"]
+
+    def _labels(self) -> dict:
+        return {"send_label": self.cfg.send_label, "quote_label": self.cfg.quote_label}
+
+    def run(self, steps: list[dict], *, tag: str = "", ttl_s: int = 300) -> str:
+        """Queue generic UI steps for any allow-listed app. The outcome arrives in ``on_screen``.
+
+        Steps: ``{"do": "launch", "package": ...}``, ``{"do": "read"}``, ``{"do": "tap", "text": ...}``
+        (or ``"x"``/``"y"``), ``{"do": "input", "text": ...}``, ``{"do": "scroll", "direction": "down"}``,
+        ``{"do": "back"}``, ``{"do": "home"}``, ``{"do": "wait", "ms": 800}``.
+        """
+        for s in steps:
+            if s.get("do") == "launch" and s.get("package") not in self.cfg.apps:
+                raise ValueError(f"{s.get('package')} is not in WECOMDROID_APPS")
+        with self.lock:
+            return self.store.enqueue("run", {"steps": steps}, ttl_s=ttl_s,
+                                      context={"purpose": "run", "tag": tag})["id"]
 
     def send(self, chat: str, text: str, *, ttl_s: int = REPLY_TTL_S) -> str:
         with self.lock:
             if not self._allow(chat):
                 return ""
-            return self.store.enqueue("send_text", {"chat": chat, "text": text}, ttl_s=ttl_s,
+            return self.store.enqueue("send_text", {"chat": chat, "text": text, **self._labels()}, ttl_s=ttl_s,
                                       context={"purpose": "send"})["id"]
 
     def send_file(self, chat: str, path: Path | str, *, caption: str = "", filename: str = "",
@@ -212,7 +264,7 @@ class Bot:
         with self.lock:
             self.store.enqueue("share_file",
                                {"chat": chat, "path": f"files/{cid}", "filename": filename or src.name,
-                                "caption": caption},
+                                "caption": caption, "send_label": self.cfg.send_label},
                                ttl_s=ttl_s, command_id=cid,
                                context={"purpose": "file", "file": str(dest.resolve()),
                                         "sha256": hashlib.sha256(data).hexdigest()})
@@ -247,11 +299,16 @@ class Bot:
             for cmd in self.store.sweep():
                 self._alert_command(cmd, "the phone never fetched it (expired)" if cmd["state"] == "expired"
                                     else "sent to the phone but no result after 3 min; it may or may not have gone out")
+            self._hook("on_tick")
             if now - float(self.store.get_meta("pruned_at") or 0) > 86400:
                 self.store.prune()
                 self.store.set_meta("pruned_at", str(now))
 
     def _alert_command(self, cmd: dict, why: str) -> None:
+        if cmd["type"] == "run":
+            self._hook("on_screen", Screen(tag=cmd["context"].get("tag", ""), ok=False, app="", texts=[],
+                                           error=why, raw=None))
+            return
         if cmd["type"] in ("snapshot", "dump", "home"):
             if cmd["type"] == "snapshot":
                 self.alert(f"**WeComDroid**: could not read 「{cmd['args'].get('chat')}」 after "

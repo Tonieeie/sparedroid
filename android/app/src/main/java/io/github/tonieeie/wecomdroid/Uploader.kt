@@ -94,7 +94,7 @@ object Uploader {
      */
     private fun ensureListenerBound() {
         if (Status.listenerConnected) return
-        val cn = ComponentName(appCtx, WeComNotificationListener::class.java)
+        val cn = ComponentName(appCtx, AppNotificationListener::class.java)
         val enabled = Settings.Secure.getString(appCtx.contentResolver, "enabled_notification_listeners")
             ?.split(":")?.any { it == cn.flattenToString() } == true
         if (!enabled) return
