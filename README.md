@@ -103,6 +103,7 @@ App 不申请定位、通讯录、短信、相机、麦克风、存储权限。
 | 任意应用的 `bot.run` 通用动作（打开 / 读屏 / 点击 / 输入 / 滚动） | ⚠️ 0.2.0 新增，通过编译和单元测试，**尚未真机验证** |
 | MCP 服务（`sparedroid mcp`） | ✅ 端到端测试（真实 MCP 客户端 + 模拟手机）；依赖的通用动作同上，未真机验证 |
 | 0.3.0 新功能：截图、通知快捷回复、发图片、长按 / 滑动 / 等文字、电量上报 | ⚠️ 通过编译和单元测试，**尚未真机验证**；快捷回复取决于应用的通知有没有「回复」按钮 |
+| 手机 App 0.4.0：崩溃记录与退出原因上报、系统开关状态、回调防崩 | ⚠️ 通过编译和单元测试，**尚未真机验证** |
 | 其它聊天应用的发消息 / 引用 | ⚠️ 需要设置按钮文字（`SPAREDROID_SEND_LABEL` 等），未验证 |
 
 欢迎用 [兼容性反馈](https://github.com/Tonieeie/sparedroid/issues/new/choose) 告诉我们你的机型和应用。
@@ -247,12 +248,22 @@ Claude：（read_screen）今日订单 13 单，营业额 ¥3,668，待发货 4 
 ```
 
 应用白名单、会话白名单、频率限制照样生效；`SPAREDROID_MCP_READONLY=true` 可以让 AI 只看不动。
+`phone_status` 会直接告诉 AI 手机哪里出了问题、该怎么修；多步操作可以用 `run_steps` 一次做完。
 工具列表、远程用法和安全说明见 [docs/mcp.md](docs/mcp.md)。
 
 ## 让 Claude Code 带你配置（Skill）
 
 仓库自带一个 Claude Code Skill（`skills/sparedroid`）。装上之后，你直接跟 Claude 说
 「帮我把旧手机配成企业微信群机器人」或「群里 @ 机器人没反应」，它会按步骤带你部署、写逻辑、排查问题。
+
+推荐当插件装，Skill 和 MCP 服务一起装好：
+
+```bash
+claude plugin marketplace add Tonieeie/sparedroid
+claude plugin install sparedroid@sparedroid
+```
+
+只要 Skill 的话，复制过去：
 
 ```bash
 # macOS / Linux
@@ -268,6 +279,7 @@ Copy-Item -Recurse skills\sparedroid $HOME\.claude\skills\
 | **项目本身** | 自己部署、自己写 Python 逻辑 |
 | **MCP 服务** | 让 AI 助手直接操作手机，不写代码 |
 | **Skill** | 让 Claude Code 带你完成部署、写 handler、排查故障 |
+| **Claude Code 插件** | Skill + MCP 服务一次装好 |
 
 ## 安全边界
 

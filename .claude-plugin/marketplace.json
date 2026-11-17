@@ -1,0 +1,12 @@
+{
+  "name": "sparedroid",
+  "description": "SpareDroid: turn a spare Android phone into an API for apps that have none.",
+  "owner": { "name": "Tonieeie", "url": "https://github.com/Tonieeie" },
+  "plugins": [
+    {
+      "name": "sparedroid",
+      "source": "./",
+      "description": "Skill + MCP server for SpareDroid: set it up, write handlers, troubleshoot, and let Claude use the phone."
+    }
+  ]
+}

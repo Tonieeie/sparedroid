@@ -71,6 +71,15 @@ class BotAccessibilityService : AccessibilityService() {
     override fun onInterrupt() = Unit
 
     override fun onAccessibilityEvent(e: AccessibilityEvent) {
+        // 系统回调里抛出的异常会让整个 App 崩掉，有的手机会顺手把崩过的无障碍服务关掉。
+        try {
+            onEvent(e)
+        } catch (t: Throwable) {
+            Status.error("无障碍事件处理出错：$t")
+        }
+    }
+
+    private fun onEvent(e: AccessibilityEvent) {
         if (e.packageName?.toString() !in cfg.apps) return
         Status.lastWeComEventAt = System.currentTimeMillis()
 
@@ -82,7 +91,7 @@ class BotAccessibilityService : AccessibilityService() {
             if (now - lastAutoDumpAt < 2_000) return
             lastAutoDumpAt = now
             val activity = e.className?.toString()
-            main.postDelayed({ enqueueDump("auto", activity) }, 1_000)
+            main.postDelayed({ runCatching { enqueueDump("auto", activity) } }, 1_000)
         }
     }
 

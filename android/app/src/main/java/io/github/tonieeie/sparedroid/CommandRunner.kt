@@ -209,7 +209,7 @@ object CommandRunner {
             result.put("ok", false).put("error", e.code).put("message", e.message)
             // 失败时顺手带上当前界面，服务器那边能看出卡在哪
             runCatching { svc?.readScreen() }.getOrNull()?.let { result.put("screen_on_error", it) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             result.put("ok", false).put("error", "exception").put("message", e.toString())
         } finally {
             // 操作完回桌面：停在某个会话里时，那个会话的新消息不会再弹通知，就漏了。

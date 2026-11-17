@@ -26,6 +26,15 @@ pip install "sparedroid[mcp]"
 
 ### Claude Code
 
+推荐装插件：一次装好 MCP 服务和 [Skill](../skills/sparedroid/SKILL.md)，安装时会问你 SpareDroid 目录、是否只读（默认只读）。
+
+```bash
+claude plugin marketplace add Tonieeie/sparedroid
+claude plugin install sparedroid@sparedroid
+```
+
+只要 MCP 服务的话：
+
 ```bash
 claude mcp add sparedroid -e SPAREDROID_HOME=/path/to/sparedroid -- sparedroid mcp
 ```
@@ -62,7 +71,7 @@ claude mcp add sparedroid -- ssh you@your-server "SPAREDROID_HOME=/opt/sparedroi
 
 | 工具 | 作用 | 会改变什么吗 |
 |---|---|---|
-| `phone_status` | 手机在不在线、能用哪些应用和会话 | 否 |
+| `phone_status` | 手机在不在线、能用哪些应用和会话；`problems` 列出当前问题和要怎么修，`last_app_restart` 说明 App 上次是怎么没的 | 否 |
 | `read_screen(app?)` | 读出屏幕上的全部文字；给了包名就先打开那个应用 | 只会打开应用 |
 | `recent_notifications(limit, app?)` | 受控应用最近的通知 | 否 |
 | `recent_mentions(limit)` | 最近 @ 机器人的聊天消息（带 id） | 否 |
@@ -72,6 +81,7 @@ claude mcp add sparedroid -- ssh you@your-server "SPAREDROID_HOME=/opt/sparedroi
 | `screenshot(app?)` | 截图并把图片直接给 AI 看（需打开 `screenshot` 功能，Android 11+） | 只会打开应用 |
 | `long_press(text)` / `swipe(x1,y1,x2,y2)` | 长按 / 滑动 | **是** |
 | `wait_for_text(text, timeout_seconds)` | 等某段文字出现 | 否 |
+| `run_steps(steps)` | 一次跑最多 20 步（打开 / 点击 / 输入 / 滚动 / 等待…），最后返回屏幕；固定流程用它，省掉来回 | **是**（只含读屏 / 等待 / 打开应用时不算） |
 | `tap_notification_button(chat, button)` | 点某个会话最新通知上的按钮（如「标为已读」），不用开屏 | **是** |
 | `reply_to_message(message_id, text, quote)` | 回复某条 @ 消息（默认引用） | **发出真实消息** |
 | `send_message(chat, text)` | 往某个会话发一句话 | **发出真实消息** |
@@ -79,6 +89,18 @@ claude mcp add sparedroid -- ssh you@your-server "SPAREDROID_HOME=/opt/sparedroi
 | `send_image(chat, path, caption)` | 把本机的图片发到某个会话 | **发出真实消息** |
 
 关掉的功能（`SPAREDROID_FEATURES` 或手机设置页）对应的工具会直接返回 `feature_disabled`。
+
+每个工具都带 MCP 的提示标注：看的工具标 `readOnlyHint`，发消息的标 `destructiveHint`，
+支持的客户端可以据此「看的自动放行、发的先问你」。
+
+### 资源和提示词
+
+| | 名字 | 作用 |
+|---|---|---|
+| 资源 | `sparedroid://status` | 同 `phone_status` |
+| 资源 | `sparedroid://notifications` | 最近 50 条通知 |
+| 提示词 | `check_phone` | 让 AI 查手机健康状况，说清楚该去手机上做什么，不点不发 |
+| 提示词 | `answer_mentions` | 让 AI 逐条起草回复，你批准哪条才发哪条 |
 
 每次调用要几秒（手机每 3 秒来取一次指令）。
 

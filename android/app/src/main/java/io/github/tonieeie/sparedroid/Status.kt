@@ -42,5 +42,5 @@ object Status {
 
 /** 不开 buildConfig 生成，版本号手写一份，跟 app/build.gradle.kts 保持一致。 */
 object BuildConfigCompat {
-    const val VERSION_NAME = "0.3.1"
+    const val VERSION_NAME = "0.4.0"
 }

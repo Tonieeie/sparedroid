@@ -109,6 +109,61 @@ class Bot:
             self._on_result(p)
         elif kind == "ui_dump":
             self._save_dump("dump", p)
+        elif kind == "app_start":
+            self._on_app_start(p)
+
+    # Why the phone's app process ended last time (Android 11+, from ApplicationExitInfo).
+    EXIT_REASONS = {
+        "crash": "the app crashed",
+        "crash_native": "the app crashed (native code)",
+        "anr": "the app froze and the system ended it",
+        "low_memory": "the phone ran low on memory and the system reclaimed the app",
+        "signaled": "the system or a phone-manager app killed it",
+        "user_requested": "it was force-stopped (by hand, or by a phone-manager / cleaner app)",
+        "user_stopped": "it was force-stopped (by hand, or by a phone-manager / cleaner app)",
+        "excessive_resource_usage": "the system decided it used too much battery or CPU",
+        "permission_change": "a permission changed (e.g. accessibility or notification access was turned off)",
+        "exit_self": "the app exited by itself",
+        "dependency_died": "a system component it depends on died",
+        "initialization_failure": "it failed to start",
+        "other": "another reason",
+    }
+
+    def _on_app_start(self, p: dict) -> None:
+        """The phone's app process started again: explain how it ended last time.
+
+        On many phones a dead app process takes its accessibility switch with it, so
+        "why does accessibility keep turning off" really means "why does the app die":
+        a crash, the system / a phone manager killing it, or the phone rebooting.
+        """
+        self._save_dump("app_start", p)
+        self.store.set_meta("last_app_start", json.dumps(p, ensure_ascii=False)[:4000])
+        uptime_min = int((p.get("uptime_ms") or 0) / 60000)
+        if uptime_min < 15:
+            phone = f"The phone **rebooted recently** (up {uptime_min} min) - most likely it ran out of power."
+        else:
+            phone = f"The phone did not reboot (up {uptime_min // 60} h); only the app process died."
+        lines = ["**SpareDroid**: the app on the phone restarted.", phone]
+        last = p.get("last_alive_at") or 0
+        if last:
+            lines.append("Last seen alive: " + time.strftime("%Y-%m-%d %H:%M", time.localtime(last / 1000)))
+        crash = p.get("crash") or ""
+        reasons = p.get("exit_reasons") or []
+        if crash:
+            first = next((ln for ln in crash.splitlines()[2:] if ln.strip()), "")
+            lines.append(f"How it ended: **the app crashed** - {first.strip()[:160]}")
+        elif reasons:
+            r = reasons[0]
+            label = self.EXIT_REASONS.get(r.get("reason"), r.get("reason"))
+            desc = f" (system note: {r['description'][:120]})" if r.get("description") else ""
+            lines.append(f"How it ended: **{label}**{desc}")
+        elif uptime_min >= 15:
+            lines.append("How it ended: unknown (Android older than 11 does not say, and there was no crash) "
+                         "- usually the system or a phone-manager app killed it.")
+        if p.get("device"):
+            lines.append(f"Device: {p['device']}")
+        log.warning("app start report: %s", json.dumps(p, ensure_ascii=False)[:3000])
+        self.alert("\n".join(lines))
 
     def _hook(self, name: str, *args) -> None:
         fn = self.hooks.get(name)
@@ -128,7 +183,15 @@ class Bot:
         self._hook("on_notification", Notification(
             app=app, title=p.get("title") or "", text=p.get("big_text") or p.get("text") or "",
             chat=chat, mentioned=bool(p.get("mentioned")), posted_at=(p.get("post_time") or 0) / 1000, raw=p))
-        if not p.get("mentioned"):
+        # The phone only knows the bot name it was configured with, and some notifications lack the
+        # "[有人@我]" marker. Check again with the server's name: either side recognising it counts.
+        texts = [p.get(k) or "" for k in ("text", "big_text", "ticker")]
+        at_bot = bool(self.cfg.bot_name) and any(f"@{self.cfg.bot_name}" in t for t in texts)
+        if not (p.get("mentioned") or at_bot):
+            if chat and self.cfg.works_in(chat):
+                # Log (briefly) so "someone wrote but the bot ignored it" can be traced later.
+                log.info("notification in %r without a recognised @%s (phone flag=%s): %s", chat,
+                         self.cfg.bot_name or "bot", p.get("mentioned"), " ".join(texts[0].split())[:40])
             return
         if not self.cfg.works_in(chat):
             log.info("mentioned in %r, which is not in SPAREDROID_CHATS; ignoring", chat)
@@ -209,13 +272,33 @@ class Bot:
             # Phone app 0.3.1+ reports its keep-alive foreground service; older apps don't send the field.
             if "keep_alive" in hb and not hb["keep_alive"]:
                 broken.append("keep-alive service (the system may stop the app while the screen is off)")
-            now = ", ".join(broken)
-            if now != (self.store.get_meta("phone_health") or ""):
-                self.store.set_meta("phone_health", now)
-                self.alert(f"**SpareDroid**: on the phone, the {now} stopped. Open the app on the phone to fix it."
-                           if now else "**SpareDroid**: the phone's services are healthy again.")
+            self._health(", ".join(broken), hb)
             if "battery_alerts" in self.cfg.features:
                 self._battery(hb)
+
+    def _health(self, now: str, hb: dict) -> None:
+        if now == (self.store.get_meta("phone_health") or ""):
+            self.store.set_meta("phone_health_pending", "")
+            return
+        # Right after the app starts, accessibility and the listener are not connected yet. Alerting
+        # on that would always be followed by "healthy again" a minute later, so bad news must show
+        # in two heartbeats in a row. Good news is reported at once.
+        if now and self.store.get_meta("phone_health_pending") != now:
+            self.store.set_meta("phone_health_pending", now)
+            return
+        self.store.set_meta("phone_health_pending", "")
+        self.store.set_meta("phone_health", now)
+        if not now:
+            self.alert("**SpareDroid**: the phone's services are healthy again.")
+            return
+        # Phone app 0.4.0+ reports whether the system switches themselves are on. A switch that was
+        # turned off needs a person to turn it back on; "on but not connected" usually recovers.
+        off = [label for key, label in (("a11y_enabled", "Accessibility"),
+                                        ("listener_enabled", "Notification access"))
+               if key in hb and not hb[key]]
+        hint = (f"The system switch for {' and '.join(off)} **was turned off**; turn it back on in the "
+                "phone's Settings." if off else "Open the app on the phone to fix it.")
+        self.alert(f"**SpareDroid**: on the phone, the {now} stopped. {hint}")
 
     def _battery(self, hb: dict) -> None:
         """Alert once per change: unplugged / plugged back in, and low battery while unplugged."""

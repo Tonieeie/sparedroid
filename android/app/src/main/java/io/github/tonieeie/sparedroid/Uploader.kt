@@ -79,7 +79,7 @@ object Uploader {
 
                 backoff = 0L
                 if (!drained) sleep(IDLE_POLL_MS)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Status.error("${e.javaClass.simpleName}: ${e.message}")
                 backoff = if (backoff == 0L) 2_000L else (backoff * 2).coerceAtMost(MAX_BACKOFF_MS)
                 sleep(backoff)
@@ -123,10 +123,15 @@ object Uploader {
             }
             put("features", org.json.JSONArray(cfg.features.sorted()))
             put("sdk", android.os.Build.VERSION.SDK_INT)
+            put("device", Diagnostics.deviceInfo())
+            // 系统设置里的开关本身是否开着（和"连没连上"是两回事：关了要人去重新打开）
+            val sw = Diagnostics.switches(appCtx)
+            for (k in sw.keys()) put(k, sw.get(k))
         }
         val r = Http.postJson("$base/heartbeat", token, body.toString())
         if (!r.ok) throw RuntimeException("心跳失败 HTTP ${r.code}")
         Status.lastHeartbeatOkAt = System.currentTimeMillis()
+        Diagnostics.markAlive(appCtx)
     }
 
     private fun pollCommands(base: String, token: String, cfg: Config) {

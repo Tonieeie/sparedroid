@@ -1,0 +1,35 @@
+{
+  "name": "sparedroid",
+  "displayName": "SpareDroid",
+  "version": "0.5.0",
+  "description": "Turn a spare Android phone into an API: a skill for setting up and running SpareDroid, plus its MCP server (read screens, tap, type, answer chat mentions).",
+  "author": { "name": "Tonieeie", "url": "https://github.com/Tonieeie" },
+  "homepage": "https://github.com/Tonieeie/sparedroid",
+  "repository": "https://github.com/Tonieeie/sparedroid",
+  "license": "MIT",
+  "keywords": ["android", "accessibility", "mcp", "wecom", "automation", "bot"],
+  "mcpServers": {
+    "sparedroid": {
+      "command": "sparedroid",
+      "args": ["mcp"],
+      "env": {
+        "SPAREDROID_HOME": "${user_config.sparedroid_home}",
+        "SPAREDROID_MCP_READONLY": "${user_config.readonly}"
+      }
+    }
+  },
+  "userConfig": {
+    "sparedroid_home": {
+      "type": "directory",
+      "title": "SpareDroid directory",
+      "description": "The directory where `sparedroid serve` runs (it holds .env and data/). Install the server first: pip install \"sparedroid[mcp]\".",
+      "required": true
+    },
+    "readonly": {
+      "type": "boolean",
+      "title": "Read-only",
+      "description": "Only allow tools that look (no tapping, typing or sending). Recommended while setting up.",
+      "default": true
+    }
+  }
+}

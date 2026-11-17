@@ -235,3 +235,51 @@ def test_new_tools_are_listed():
     server = build(Dummy())
     names = {t.name for t in aio.run(server.list_tools())}
     assert {"screenshot", "long_press", "swipe", "wait_for_text", "tap_notification_button", "send_image"} <= names
+
+
+# ---- diagnostics, run_steps, annotations, prompts ----
+
+def test_status_lists_problems_with_fixes_and_last_restart(rig):
+    phone, fake = rig
+    assert "never checked in" in phone.status()["problems"][0]
+    fake.bot.heartbeat({"accessibility_connected": False, "a11y_enabled": False, "listener_connected": True,
+                        "keep_alive": True, "plugged": True, "device": "Acme X1"})
+    fake.bot.handle_events([{"event_id": "s1", "type": "app_start", "payload": {
+        "uptime_ms": 9 * 3600000, "exit_reasons": [{"reason": "user_stopped"}], "last_alive_at": 1}}])
+    st = phone.status()
+    assert st["device"] == "Acme X1"
+    assert len(st["problems"]) == 1 and "switched OFF" in st["problems"][0]
+    assert st["last_app_restart"]["exit_reason"] == "user_stopped"
+    assert st["last_app_restart"]["phone_rebooted"] is False
+
+
+def test_run_steps_validates_ends_with_a_read_and_respects_readonly(rig):
+    phone, fake = rig
+    assert phone.run_steps([])["error"] == "bad_steps"
+    assert phone.run_steps([{"do": "format_disk"}])["error"] == "bad_steps"
+    out = phone.run_steps([{"do": "launch", "package": SHOP}, {"do": "tap", "text": "今日订单"}])
+    assert out["ok"] and out["texts"] == SCREEN
+    assert fake.seen[-1]["args"]["steps"][-1] == {"do": "read"}
+    phone.readonly = True
+    assert phone.run_steps([{"do": "tap", "text": "x"}])["error"] == "readonly"
+    assert phone.run_steps([{"do": "launch", "package": SHOP}, {"do": "read"}])["ok"]
+
+
+def test_tools_carry_annotations_and_prompts_exist():
+    pytest.importorskip("mcp")
+    import asyncio as aio
+
+    from sparedroid.mcp import build
+
+    class Dummy:
+        pass
+
+    server = build(Dummy())
+    tools = {t.name: t for t in aio.run(server.list_tools())}
+    assert tools["read_screen"].annotations.read_only_hint is True
+    assert tools["send_message"].annotations.destructive_hint is True
+    assert tools["tap"].annotations.read_only_hint is False
+    assert "run_steps" in tools
+    assert {p.name for p in aio.run(server.list_prompts())} == {"check_phone", "answer_mentions"}
+    assert {str(r.uri) for r in aio.run(server.list_resources())} == {"sparedroid://status",
+                                                                      "sparedroid://notifications"}

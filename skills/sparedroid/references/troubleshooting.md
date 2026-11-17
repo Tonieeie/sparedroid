@@ -43,6 +43,24 @@ Check in this order — each step depends on the previous one:
 Battery optimisation or the vendor's background killer. Re-check ③ in the app and the system "auto-start /
 background" setting. If `SPAREDROID_ALERT_WEBHOOK` is set, the server reports "no heartbeat for N min".
 
+## The app keeps restarting / accessibility keeps turning off
+
+On many phones a dead app process takes its accessibility switch with it, so this is really "why does the app
+die". Phone app 0.4.0+ reports it on every start (alert "the app on the phone restarted", or `last_app_restart`
+in `phone_status`):
+
+| Reported | Meaning | What helps |
+|---|---|---|
+| crash + a stack trace line | a bug in the app | open an issue with that line, phone model and Android version |
+| `user_requested` / `user_stopped` | force-stopped by hand or by a phone-manager / cleaner app | exclude SpareDroid in the phone manager, lock it in recent apps |
+| `signaled` / `low_memory` / `excessive_resource_usage` | the system killed it in the background | battery optimisation off, vendor "auto-start" / "background activity" allowed, keep the keep-alive notification |
+| `permission_change` | a permission was changed (often accessibility itself) | check who / what changes it; some security apps do this |
+| "the phone rebooted recently" | power loss or an update | keep it plugged in; after a reboot open the app once |
+| "unknown" | Android 10 or older does not say | usually the system killed it; same fixes as `signaled` |
+
+The heartbeat also carries `a11y_enabled` / `listener_enabled`: whether the system switches themselves are on.
+"Switch on but not connected" usually recovers by opening the app; "switch off" needs a person in Settings.
+
 ## The screen went off and replies fail
 
 Developer options → "Stay awake while charging", and screen lock "none". Listening still works with the screen

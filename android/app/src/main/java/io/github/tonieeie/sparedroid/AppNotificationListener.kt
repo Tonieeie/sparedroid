@@ -32,6 +32,15 @@ class AppNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        // 同上：系统回调里出任何错都接住，不让整个 App 崩掉。
+        try {
+            handle(sbn)
+        } catch (t: Throwable) {
+            Status.error("通知处理出错：$t")
+        }
+    }
+
+    private fun handle(sbn: StatusBarNotification) {
         val n = sbn.notification ?: return
         // 分组摘要通知（"3 个会话的 10 条消息"）没有具体内容，跳过。
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return

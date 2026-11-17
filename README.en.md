@@ -131,16 +131,27 @@ pip install "sparedroid[mcp]"
 claude mcp add sparedroid -e SPAREDROID_HOME=/path/to/sparedroid -- sparedroid mcp
 ```
 
-Tools: `phone_status`, `read_screen`, `recent_notifications`, `recent_mentions`, `tap`, `type_text`, `scroll`,
-`press_back`, `go_home`, `reply_to_message`, `send_message`, `send_file`. The app and chat allow-lists and
-rate limits still apply; `SPAREDROID_MCP_READONLY=true` makes it look-only. Works over SSH or
-`docker compose exec -T` because it is plain stdio. See [docs/mcp.md](docs/mcp.md) (Chinese).
+Tools: look (`phone_status`, `read_screen`, `screenshot`, `recent_notifications`, `recent_mentions`,
+`wait_for_text`), act (`tap`, `type_text`, `scroll`, `long_press`, `swipe`, `press_back`, `go_home`,
+`tap_notification_button`, `run_steps` for up to 20 steps in one round trip) and send (`reply_to_message`,
+`send_message`, `send_image`, `send_file`), each with MCP read-only / destructive hints. `phone_status` lists
+current problems with the fix for each and explains the last app restart (crash, system kill, reboot).
+Resources `sparedroid://status` and `sparedroid://notifications`; prompts `check_phone` and `answer_mentions`.
+The app and chat allow-lists and rate limits still apply; `SPAREDROID_MCP_READONLY=true` makes it look-only.
+Works over SSH or `docker compose exec -T` because it is plain stdio. See [docs/mcp.md](docs/mcp.md) (Chinese).
 
-## Claude Code skill
+## Claude Code plugin and skill
 
 `skills/sparedroid` teaches Claude Code to set SpareDroid up with you, write handlers and troubleshoot
-("my phone bot doesn't answer in the group"). Install: `cp -r skills/sparedroid ~/.claude/skills/`
-(or into a project's `.claude/skills/`).
+("my phone bot doesn't answer in the group"). The repository is also a Claude Code plugin marketplace that
+installs the skill and the MCP server together (it asks for your SpareDroid directory; read-only by default):
+
+```bash
+claude plugin marketplace add Tonieeie/sparedroid
+claude plugin install sparedroid@sparedroid
+```
+
+Skill only: `cp -r skills/sparedroid ~/.claude/skills/` (or into a project's `.claude/skills/`).
 
 ## Risks
 

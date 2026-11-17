@@ -6,7 +6,7 @@ return 404. Paths are relative to the endpoint configured on the phone (e.g. `ht
 | Direction | Endpoint | Body |
 |---|---|---|
 | phone → | `POST /events` | `{"events": [{event_id, type, device_id, created_at, payload}]}` |
-| phone → | `POST /heartbeat` | every 60 s: `accessibility_connected`, `listener_connected`, `keep_alive` (the foreground service is running), `screen_on`, `keyguard_locked`, `queue_size`, `last_error`, `app_version`, … |
+| phone → | `POST /heartbeat` | every 60 s: `accessibility_connected`, `listener_connected`, `keep_alive` (the foreground service is running), `screen_on`, `keyguard_locked`, `queue_size`, `last_error`, `app_version`, and from 0.4.0 `a11y_enabled` / `listener_enabled` (are the system switches themselves on), `uptime_ms`, `device`, … |
 | ← server | `GET /commands?device_id=` | `{"commands": [{id, type, args}]}` |
 | ← server | `GET /files/<id>` | bytes for a `share_file` command |
 
@@ -20,6 +20,7 @@ deduplicate by `event_id` (it does).
 | `notification` | Raw notification from an allow-listed app: `package`, `chat`, `title`, `text`, `big_text`, `ticker`, `mentioned`, `can_reply`, `post_time`, … |
 | `command_result` | `command_id`, `type`, `ok`, `error`, `message`, plus `screen` (for `snapshot`), `quoted` (for `reply_quote`), `woke_screen` (the app turned the screen on for this command), `screen_on_error` |
 | `ui_dump` | Full accessibility tree of the current WeCom screen (recon mode) |
+| `app_start` | Sent once per app process start (0.4.0+): `uptime_ms` (since boot), `boot_count`, `last_alive_at` (last successful heartbeat), `device`, `crash` (stack trace recorded by the app's crash handler, if it crashed), `exit_reasons` (Android 11+: last 3 from `ApplicationExitInfo`, each `reason`, `description`, `at`) |
 
 ## Commands
 

@@ -187,6 +187,8 @@ def test_keep_alive_drop_alerts_and_old_apps_are_not_flagged(make_bot):
     bot.heartbeat(dict(ok, keep_alive=True))
     assert alerts == []
     bot.heartbeat(dict(ok, keep_alive=False))
+    assert alerts == []  # bad news must show twice in a row
+    bot.heartbeat(dict(ok, keep_alive=False))
     assert len(alerts) == 1 and "keep-alive" in alerts[0]
     bot.heartbeat(dict(ok, keep_alive=True))
     assert len(alerts) == 2 and "healthy again" in alerts[1]
@@ -234,3 +236,51 @@ def test_http_requires_token_everywhere(make_bot):
 def test_config_problems():
     assert Config(token="short", bot_name="", chats=frozenset()).problems() and \
         Config(token="x" * 24, bot_name="b", chats=frozenset({"*"})).problems() == []
+
+
+def test_bad_health_on_app_start_is_not_alerted_if_it_recovers(make_bot):
+    bot, alerts = make_bot()
+    ok = {"accessibility_connected": True, "listener_connected": True}
+    bot.heartbeat(ok)
+    bot.heartbeat(dict(ok, accessibility_connected=False))  # first seconds after a restart
+    bot.heartbeat(ok)
+    assert alerts == []
+
+
+def test_switched_off_accessibility_says_to_turn_it_back_on(make_bot):
+    bot, alerts = make_bot()
+    hb = {"accessibility_connected": False, "listener_connected": True, "a11y_enabled": False,
+          "listener_enabled": True}
+    bot.heartbeat(hb)
+    bot.heartbeat(hb)
+    assert len(alerts) == 1
+    assert "accessibility service" in alerts[0] and "Accessibility **was turned off**" in alerts[0]
+    assert "Notification access" not in alerts[0]
+
+
+
+
+def test_app_start_explains_crash_reboot_and_exit_reason(make_bot):
+    bot, alerts = make_bot()
+    bot.handle_events([ev("app_start", {"uptime_ms": 3 * 60000, "device": "Acme X1 / Android 14 (API 34)"})])
+    assert "rebooted recently" in alerts[-1] and "Acme X1" in alerts[-1]
+    bot.handle_events([ev("app_start", {"uptime_ms": 5 * 3600000, "crash":
+                                            "1700000000000\nthread: main\njava.lang.IllegalStateException: boom\n at x"})])
+    assert "crashed" in alerts[-1] and "IllegalStateException: boom" in alerts[-1]
+    bot.handle_events([ev("app_start", {"uptime_ms": 5 * 3600000,
+                                            "exit_reasons": [{"reason": "user_stopped", "description": ""}]})])
+    assert "force-stopped" in alerts[-1]
+    bot.handle_events([ev("app_start", {"uptime_ms": 5 * 3600000})])
+    assert "unknown" in alerts[-1]
+    assert bot.store.get_meta("last_app_start")
+
+
+def test_server_recognises_the_bot_name_when_the_phone_did_not(make_bot):
+    bot, _ = make_bot()
+    bot.handle_events([ev("notification", {"chat": CHAT, "mentioned": False, "can_reply": True,
+                                            "text": "Alice: @mybot hi"})])
+    [cmd] = bot.commands()
+    assert cmd["type"] == "snapshot"
+    bot.handle_events([ev("notification", {"chat": CHAT, "mentioned": False, "can_reply": True,
+                                            "text": "Alice: hello everyone"})])
+    assert bot.commands() == []
